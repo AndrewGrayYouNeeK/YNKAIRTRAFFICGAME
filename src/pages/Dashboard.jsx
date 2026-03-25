@@ -9,6 +9,8 @@ import DroneDetailPanel from "../components/radar/DroneDetailPanel";
 import ActivityLog from "../components/radar/ActivityLog";
 import { generateDrone, updateDrone } from "../lib/droneSimulator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import RemoteIDPanel from "../components/radar/RemoteIDPanel";
+import SignalStrengthBar from "../components/radar/SignalStrengthBar";
 
 export default function Dashboard() {
   const [drones, setDrones] = useState([]);
@@ -106,9 +108,9 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Airspace Scanner</h2>
+          <h2 className="text-lg font-bold text-foreground">Live Scanner</h2>
           <p className="text-xs font-mono text-muted-foreground">
-            Real-time drone detection & tracking
+            Real-time drone detection, Remote ID & RF monitoring
           </p>
         </div>
         <ScanControls
@@ -195,6 +197,12 @@ export default function Dashboard() {
 
           <ActivityLog events={events} />
         </div>
+      </div>
+
+      {/* Bottom Row: RF Signal + Remote ID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SignalStrengthBar drones={drones} />
+        <RemoteIDPanel drones={drones} />
       </div>
     </div>
   );

@@ -9,6 +9,10 @@ import AppLayout from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import MapView from './pages/MapView';
 import History from './pages/History';
+import Geofence from './pages/Geofence';
+import Watchlist from './pages/Watchlist';
+import Analytics from './pages/Analytics';
+import Incidents from './pages/Incidents';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -40,6 +44,10 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/map" element={<MapView />} />
         <Route path="/history" element={<History />} />
+        <Route path="/geofence" element={<Geofence />} />
+        <Route path="/watchlist" element={<Watchlist />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/incidents" element={<Incidents />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
