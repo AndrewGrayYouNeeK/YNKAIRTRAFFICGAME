@@ -81,5 +81,6 @@ module.exports = {
   		}
   	}
   },
+  safelist: ["bg-primary/12", "border-primary/25"],
   plugins: [require("tailwindcss-animate")],
 }

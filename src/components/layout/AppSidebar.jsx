@@ -2,72 +2,95 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair } from "lucide-react";
 
-const navItems = [
-  { path: "/", icon: Radar, label: "Scanner", section: null },
-  { path: "/map", icon: Map, label: "Map View", section: null },
-  { path: "/geofence", icon: Crosshair, label: "Geofence", section: "INTELLIGENCE" },
-  { path: "/watchlist", icon: Eye, label: "Watchlist", section: null },
-  { path: "/incidents", icon: AlertTriangle, label: "Incidents", section: null },
-  { path: "/analytics", icon: BarChart2, label: "Analytics", section: null },
-  { path: "/history", icon: Clock, label: "History", section: null },
+const navGroups = [
+  {
+    label: "MONITORING",
+    items: [
+      { path: "/", icon: Radar, label: "Live Scanner", description: "Real-time radar feed" },
+      { path: "/map", icon: Map, label: "Map View", description: "Geographic tracking" },
+    ],
+  },
+  {
+    label: "INTELLIGENCE",
+    items: [
+      { path: "/geofence", icon: Crosshair, label: "Geofence", description: "Security zones" },
+      { path: "/watchlist", icon: Eye, label: "Watchlist", description: "Flagged targets" },
+      { path: "/incidents", icon: AlertTriangle, label: "Incidents", description: "Event log" },
+    ],
+  },
+  {
+    label: "REPORTS",
+    items: [
+      { path: "/analytics", icon: BarChart2, label: "Analytics", description: "Detection trends" },
+      { path: "/history", icon: Clock, label: "History", description: "Past detections" },
+    ],
+  },
 ];
 
 export default function AppSidebar() {
   const location = useLocation();
-  let lastSection = null;
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-16 md:w-56 bg-card border-r border-border flex flex-col z-30">
-      {/* Logo */}
-      <div className="p-3 md:p-4 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col z-30">
+      {/* Brand */}
+      <div className="px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5 text-primary" />
           </div>
-          <div className="hidden md:block">
-            <h1 className="font-bold text-sm tracking-tight text-foreground">AirSentinel</h1>
-            <p className="text-[10px] font-mono text-muted-foreground tracking-wider">DRONE DEFENSE</p>
+          <div>
+            <h1 className="font-bold text-base tracking-tight text-foreground leading-none">AirSentinel</h1>
+            <p className="text-[11px] font-mono text-muted-foreground mt-0.5 tracking-wider">DRONE DEFENSE SYSTEM</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-2 md:p-3 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          const showSection = item.section && item.section !== lastSection;
-          if (item.section) lastSection = item.section;
-
-          return (
-            <React.Fragment key={item.path}>
-              {showSection && (
-                <div className="px-3 pt-3 pb-1 hidden md:block">
-                  <span className="text-[9px] font-mono text-muted-foreground/50 tracking-widest uppercase">
-                    {item.section}
-                  </span>
-                </div>
-              )}
-              <Link
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
-                  isActive
-                    ? "bg-primary/10 text-primary border border-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent"
-                }`}
-              >
-                <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                <span className="text-sm font-medium hidden md:block">{item.label}</span>
-              </Link>
-            </React.Fragment>
-          );
-        })}
+      {/* Nav Groups */}
+      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 mb-1.5 text-[10px] font-mono font-semibold text-muted-foreground/50 tracking-widest uppercase">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group ${
+                      isActive
+                        ? "bg-primary/12 text-primary border border-primary/25"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60 border border-transparent"
+                    }`}
+                  >
+                    <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "group-hover:text-foreground"}`} />
+                    <div className="min-w-0">
+                      <div className={`text-sm font-medium leading-none ${isActive ? "text-primary" : ""}`}>
+                        {item.label}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/60 mt-0.5">{item.description}</div>
+                    </div>
+                    {isActive && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Status */}
-      <div className="p-3 md:p-4 border-t border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-400 blip-animate" />
-          <span className="text-[10px] font-mono text-muted-foreground hidden md:block">SYSTEM ONLINE</span>
+      {/* Footer Status */}
+      <div className="px-5 py-3 border-t border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-400 blip-animate shrink-0" />
+            <span className="text-xs font-mono text-muted-foreground">SYSTEM ONLINE</span>
+          </div>
+          <span className="text-[10px] font-mono text-muted-foreground/40">v2.4</span>
         </div>
       </div>
     </aside>

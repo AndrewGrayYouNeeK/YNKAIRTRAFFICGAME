@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Radar } from "lucide-react";
 import RadarDisplay from "../components/radar/RadarDisplay";
 import ThreatBanner from "../components/radar/ThreatBanner";
 import DroneCard from "../components/radar/DroneCard";
@@ -11,6 +12,7 @@ import { generateDrone, updateDrone } from "../lib/droneSimulator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import RemoteIDPanel from "../components/radar/RemoteIDPanel";
 import SignalStrengthBar from "../components/radar/SignalStrengthBar";
+import PageHeader from "../components/layout/PageHeader";
 
 export default function Dashboard() {
   const [drones, setDrones] = useState([]);
@@ -104,26 +106,24 @@ export default function Dashboard() {
   ).length;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-[1600px]">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Live Scanner</h2>
-          <p className="text-xs font-mono text-muted-foreground">
-            Real-time drone detection, Remote ID & RF monitoring
-          </p>
-        </div>
-        <ScanControls
-          scanning={scanning}
-          onToggleScan={() => setScanning(!scanning)}
-          onReset={() => {
-            setDrones([]);
-            setEvents([]);
-            setSelectedDrone(null);
-            addEvent("signal", "Scanner reset — cleared all contacts");
-          }}
-        />
-      </div>
+    <div className="p-6 space-y-5 max-w-[1600px]">
+      <PageHeader
+        title="Live Scanner"
+        subtitle="Real-time drone detection, Remote ID & RF monitoring"
+        icon={Radar}
+        actions={
+          <ScanControls
+            scanning={scanning}
+            onToggleScan={() => setScanning(!scanning)}
+            onReset={() => {
+              setDrones([]);
+              setEvents([]);
+              setSelectedDrone(null);
+              addEvent("signal", "Scanner reset — cleared all contacts");
+            }}
+          />
+        }
+      />
 
       {/* Threat Banner */}
       {(highestThreat === "medium" || highestThreat === "high" || highestThreat === "critical") && (
