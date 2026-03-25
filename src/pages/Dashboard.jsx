@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Radar } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import RadarDisplay from "../components/radar/RadarDisplay";
 import ThreatBanner from "../components/radar/ThreatBanner";
 import DroneCard from "../components/radar/DroneCard";
@@ -30,12 +31,33 @@ export default function Dashboard() {
     ]);
   }, []);
 
+  // Save a drone detection to the database
+  const saveDetection = useCallback(async (drone) => {
+    base44.entities.DroneDetection.create({
+      drone_id: drone.id,
+      model: drone.model,
+      brand: drone.brand,
+      category: drone.category,
+      threat_level: drone.threatLevel,
+      max_distance: drone.distance,
+      max_altitude: drone.altitude,
+      max_speed: drone.speed,
+      frequency: drone.frequency,
+      duration_seconds: 0,
+      lat: drone.lat,
+      lng: drone.lng,
+    });
+  }, []);
+
   // Initial drones
   useEffect(() => {
     const initial = Array.from({ length: 4 }, (_, i) => generateDrone(i));
     setDrones(initial);
-    initial.forEach((d) => addEvent("detected", `${d.id} (${d.model}) detected at ${d.distance}m`));
-  }, [addEvent]);
+    initial.forEach((d) => {
+      addEvent("detected", `${d.id} (${d.model}) detected at ${d.distance}m`);
+      saveDetection(d);
+    });
+  }, [addEvent, saveDetection]);
 
   // Animation loop
   useEffect(() => {
@@ -57,6 +79,7 @@ export default function Dashboard() {
             const newDrone = generateDrone(updated.length);
             updated = [...updated, newDrone];
             addEvent("detected", `New contact: ${newDrone.id} (${newDrone.model}) at ${newDrone.distance}m`);
+            saveDetection(newDrone);
           }
 
           if (Math.random() < 0.08 && updated.length > 2) {
