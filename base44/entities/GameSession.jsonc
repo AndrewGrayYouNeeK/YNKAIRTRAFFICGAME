@@ -49,6 +49,11 @@
       "default": 1,
       "description": "Mortar strikes available"
     },
+    "air_strikes": {
+      "type": "number",
+      "default": 1,
+      "description": "Air strike attacks available"
+    },
     "score": {
       "type": "number",
       "default": 0

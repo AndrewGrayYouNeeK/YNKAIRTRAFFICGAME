@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Eye, Hammer, Lock, Zap, Users, Flame } from "lucide-react";
+import { MapPin, Eye, Hammer, Lock, Zap, Users, Flame, Zap as ZapIcon } from "lucide-react";
 import RadarDisplay from "../radar/RadarDisplay";
+import MapTargeting from "./MapTargeting";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
@@ -13,6 +14,7 @@ export default function StrategyMode({ session, onUpdate }) {
   const [scanAngle, setScanAngle] = useState(0);
   const [ghosts, setGhosts] = useState([]);
   const [selectingMortarTarget, setSelectingMortarTarget] = useState(false);
+  const [selectingAirStrike, setSelectingAirStrike] = useState(false);
 
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
@@ -29,17 +31,26 @@ export default function StrategyMode({ session, onUpdate }) {
   // Simulate ghost spawns
   useEffect(() => {
     const spawnInterval = setInterval(() => {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = 500 + Math.random() * 300;
+      const latOffset = (distance / 111000) * Math.cos(angle);
+      const lngOffset = (distance / 111000 / Math.cos(session.player_lat * Math.PI / 180)) * Math.sin(angle);
+      
       const newGhost = {
         id: `ghost-${Date.now()}`,
-        distance: 500 + Math.random() * 300,
+        lat: session.player_lat + latOffset,
+        lng: session.player_lng + lngOffset,
+        distance: distance,
         bearing: Math.random() * 360,
         type: ["Poltergeist", "Shadow Figure", "Intelligent Spirit"][Math.floor(Math.random() * 3)],
         health: 100,
+        x: Math.random() * 400,
+        y: Math.random() * 400,
       };
       setGhosts((prev) => [...prev.slice(-10), newGhost]);
     }, 3000);
     return () => clearInterval(spawnInterval);
-  }, []);
+  }, [session.player_lat, session.player_lng]);
 
   const boardWindow = () => {
     if (session.wood >= 5) {
@@ -91,8 +102,37 @@ export default function StrategyMode({ session, onUpdate }) {
     setSelectingMortarTarget(false);
   };
 
+  const handleAirStrike = (targetLat, targetLng) => {
+    const blastRadius = 0.003; // ~300m in lat/lng
+    
+    const killedGhosts = ghosts.filter(ghost => {
+      const distance = Math.hypot(ghost.lat - targetLat, ghost.lng - targetLng);
+      return distance < blastRadius;
+    }).length;
+    
+    onUpdate({
+      air_strikes: session.air_strikes - 1,
+      ghosts_killed: session.ghosts_killed + killedGhosts,
+      score: session.score + killedGhosts * 150,
+    });
+    
+    setGhosts(prev => prev.filter(ghost => {
+      const distance = Math.hypot(ghost.lat - targetLat, ghost.lng - targetLng);
+      return distance >= blastRadius;
+    }));
+    
+    setSelectingAirStrike(false);
+  };
+
   return (
     <div className="w-full h-screen flex flex-col bg-background">
+      {selectingAirStrike && (
+        <MapTargeting
+          session={session}
+          onStrike={handleAirStrike}
+          onCancel={() => setSelectingAirStrike(false)}
+        />
+      )}
       {/* Header */}
       <div className="p-4 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
@@ -210,6 +250,24 @@ export default function StrategyMode({ session, onUpdate }) {
                 className="w-full font-mono text-[10px] bg-orange-500/20 hover:bg-orange-500/30 border-orange-500/50"
               >
                 {selectingMortarTarget ? "TARGETING..." : "FIRE MORTAR"}
+              </Button>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <ZapIcon className="w-3.5 h-3.5 text-red-500" />
+                  <span className="text-[10px] font-mono text-muted-foreground">AIR STRIKES</span>
+                </div>
+                <span className="text-xs font-mono font-bold">{session.air_strikes}</span>
+              </div>
+              <Button
+                onClick={() => setSelectingAirStrike(true)}
+                disabled={session.air_strikes < 1}
+                size="sm"
+                className="w-full font-mono text-[10px] bg-red-600/20 hover:bg-red-600/30 border-red-600/50"
+              >
+                CALL AIR STRIKE
               </Button>
             </div>
           </div>
