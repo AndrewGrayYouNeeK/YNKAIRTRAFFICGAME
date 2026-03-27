@@ -52,7 +52,7 @@ export default function GameSetup({ onStartGame }) {
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Paranormal Defense</h1>
           <p className="text-sm text-muted-foreground font-mono">Survive waves of paranormal attacks at your location</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-2">Includes 1 mortar strike & 1 air strike per game</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-2">Includes mortars, airstrikes & 2 proton pack charges</p>
         </div>
 
         <div className="space-y-3">

@@ -54,6 +54,11 @@
       "default": 1,
       "description": "Air strike attacks available"
     },
+    "proton_beams": {
+      "type": "number",
+      "default": 2,
+      "description": "Proton pack charges available"
+    },
     "score": {
       "type": "number",
       "default": 0

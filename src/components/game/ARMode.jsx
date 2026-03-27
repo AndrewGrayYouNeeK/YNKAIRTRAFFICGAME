@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Eye, ChevronLeft, Crosshair, Zap, Users } from "lucide-react";
+import { Eye, ChevronLeft, Crosshair, Zap, Users, Zap as ZapIcon } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
@@ -11,7 +11,10 @@ export default function ARMode({ session, onUpdate }) {
   const canvasRef = useRef(null);
   const [ghosts, setGhosts] = useState([]);
   const [ammo, setAmmo] = useState(session.ammo);
+  const [protonBeams, setProtonBeams] = useState(session.proton_beams);
   const [killed, setKilled] = useState(0);
+  const [beamActive, setBeamActive] = useState(false);
+  const [beamTarget, setBeamTarget] = useState(null);
 
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
@@ -48,6 +51,27 @@ export default function ARMode({ session, onUpdate }) {
     }
   };
 
+  const activateProtonBeam = () => {
+    if (protonBeams > 0) {
+      setBeamActive(true);
+      setProtonBeams(protonBeams - 1);
+      
+      // Eliminate all ghosts in beam
+      const killedCount = ghosts.length;
+      setGhosts([]);
+      setKilled(killed + killedCount);
+      
+      onUpdate({
+        proton_beams: protonBeams - 1,
+        ghosts_killed: session.ghosts_killed + killedCount,
+        score: session.score + killedCount * 200,
+      });
+
+      // Beam effect for 1.5 seconds
+      setTimeout(() => setBeamActive(false), 1500);
+    }
+  };
+
   const exitAR = () => {
     onUpdate({
       game_mode: "strategy",
@@ -60,6 +84,16 @@ export default function ARMode({ session, onUpdate }) {
       {/* AR Canvas */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-primary/5 opacity-30" />
+        
+        {/* Proton Beam Effect */}
+        {beamActive && (
+          <motion.div
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            exit={{ scaleY: 0 }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-full bg-gradient-to-b from-cyan-400 via-blue-500 to-transparent opacity-60 blur-xl"
+          />
+        )}
       </div>
 
       {/* Crosshair */}
@@ -137,6 +171,18 @@ export default function ARMode({ session, onUpdate }) {
           <div className="bg-black/50 border border-yellow-500/50 rounded px-4 py-3 backdrop-blur-sm text-center">
             <div className="text-[10px] font-mono text-yellow-400 mb-1">AMMO</div>
             <div className="text-2xl font-mono font-bold text-yellow-400">{ammo}</div>
+          </div>
+
+          {/* Proton Pack */}
+          <div>
+            <button
+              onClick={activateProtonBeam}
+              disabled={protonBeams < 1 || beamActive}
+              className="w-full bg-gradient-to-b from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-cyan-400 rounded px-4 py-3 transition-all"
+            >
+              <div className="text-[10px] font-mono text-white mb-1">PROTON PACK</div>
+              <div className="text-xl font-mono font-bold text-cyan-300">{protonBeams}</div>
+            </button>
           </div>
 
           {/* Killed count */}
