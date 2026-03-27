@@ -7,10 +7,12 @@ import StrategyMode from "../components/game/StrategyMode";
 import ARMode from "../components/game/ARMode";
 import GameSetup from "../components/game/GameSetup";
 import BetweenWaves from "../components/game/BetweenWaves";
+import MultiplayerLobby from "../components/game/MultiplayerLobby";
 
 export default function Game() {
   const queryClient = useQueryClient();
   const [gameSession, setGameSession] = useState(null);
+  const [showLobby, setShowLobby] = useState(true);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["current-game-session"],
@@ -18,6 +20,7 @@ export default function Game() {
       const sessions = await base44.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
       return sessions[0] || null;
     },
+    refetchInterval: 3000,
   });
 
   const createGameMutation = useMutation({
@@ -47,6 +50,18 @@ export default function Game() {
     );
   }
 
+  if (showLobby && !gameSession) {
+    return (
+      <MultiplayerLobby
+        onStartGame={() => setShowLobby(false)}
+        onJoinGame={(session) => {
+          setGameSession(session);
+          setShowLobby(false);
+        }}
+      />
+    );
+  }
+
   if (!gameSession) {
     return (
       <GameSetup
@@ -64,6 +79,7 @@ export default function Game() {
             game_mode: "strategy",
             ...data,
           });
+          setShowLobby(false);
         }}
       />
     );
