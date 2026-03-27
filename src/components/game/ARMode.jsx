@@ -163,8 +163,17 @@ export default function ARMode({ session, onUpdate }) {
           <div className="text-center space-y-4">
             <div className="text-3xl font-mono font-bold text-green-400">WAVE CLEARED!</div>
             <p className="text-sm text-muted-foreground">{killed} ghosts eliminated</p>
-            <Button onClick={exitAR} className="font-mono">
-              Next Wave
+            <Button
+              onClick={() => {
+                onUpdate({
+                  game_mode: "strategy",
+                  status: "between_waves",
+                  ammo,
+                });
+              }}
+              className="font-mono"
+            >
+              Regroup & Prepare
             </Button>
           </div>
         </motion.div>

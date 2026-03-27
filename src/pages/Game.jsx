@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import StrategyMode from "../components/game/StrategyMode";
 import ARMode from "../components/game/ARMode";
 import GameSetup from "../components/game/GameSetup";
+import BetweenWaves from "../components/game/BetweenWaves";
 
 export default function Game() {
   const queryClient = useQueryClient();
@@ -70,7 +71,12 @@ export default function Game() {
 
   return (
     <div className="w-full h-screen bg-background overflow-hidden">
-      {gameSession.game_mode === "strategy" ? (
+      {gameSession.status === "between_waves" ? (
+        <BetweenWaves
+          session={gameSession}
+          onUpdate={(data) => updateGameMutation.mutate({ id: gameSession.id, data })}
+        />
+      ) : gameSession.game_mode === "strategy" ? (
         <StrategyMode
           session={gameSession}
           onUpdate={(data) => updateGameMutation.mutate({ id: gameSession.id, data })}
