@@ -24,7 +24,7 @@ export default function SoundControls() {
   };
 
   return (
-    <div className="absolute top-4 right-4 z-30 bg-black/50 border border-primary/50 rounded-lg p-3 backdrop-blur-sm flex items-center gap-3">
+    <div className="absolute bottom-4 right-4 z-30 bg-black/50 border border-primary/50 rounded-lg p-3 backdrop-blur-sm flex items-center gap-3">
       <button
         onClick={toggleMute}
         className="p-1.5 hover:bg-primary/20 rounded transition-colors"
