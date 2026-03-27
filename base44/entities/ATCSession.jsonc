@@ -1,0 +1,63 @@
+{
+  "name": "ATCSession",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "setup",
+        "active",
+        "paused",
+        "completed",
+        "failed"
+      ],
+      "default": "setup"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "default": "easy"
+    },
+    "level": {
+      "type": "number",
+      "default": 1,
+      "description": "Current level (1-10)"
+    },
+    "score": {
+      "type": "number",
+      "default": 0
+    },
+    "successful_landings": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_landings": {
+      "type": "number",
+      "default": 0
+    },
+    "emergencies_handled": {
+      "type": "number",
+      "default": 0
+    },
+    "collisions": {
+      "type": "number",
+      "default": 0
+    },
+    "active_aircraft": {
+      "type": "number",
+      "default": 0
+    },
+    "max_aircraft": {
+      "type": "number",
+      "default": 3,
+      "description": "Maximum aircraft in airspace at once"
+    }
+  },
+  "required": [
+    "status"
+  ]
+}

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair, Gamepad2 } from "lucide-react";
+import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair, Plane } from "lucide-react";
 
 const navGroups = [
   {
@@ -23,6 +23,12 @@ const navGroups = [
     items: [
       { path: "/analytics", icon: BarChart2, label: "Analytics", description: "Detection trends" },
       { path: "/history", icon: Clock, label: "History", description: "Past detections" },
+    ],
+  },
+  {
+    label: "GAMES",
+    items: [
+      { path: "/atc", icon: Plane, label: "Air Traffic Control", description: "Voice-guided aircraft" },
     ],
   },
 ];

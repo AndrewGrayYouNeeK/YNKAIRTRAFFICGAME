@@ -1,0 +1,80 @@
+{
+  "name": "Aircraft",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Reference to ATCSession"
+    },
+    "callsign": {
+      "type": "string",
+      "description": "Aircraft identifier (e.g., N747AA)"
+    },
+    "aircraft_type": {
+      "type": "string",
+      "description": "Aircraft model (e.g., Boeing 747, Airbus A380)"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Current latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Current longitude"
+    },
+    "altitude": {
+      "type": "number",
+      "description": "Current altitude in feet"
+    },
+    "heading": {
+      "type": "number",
+      "description": "Current heading in degrees (0-359)"
+    },
+    "speed": {
+      "type": "number",
+      "description": "Current speed in knots"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "cruising",
+        "descending",
+        "landing",
+        "landed",
+        "emergency"
+      ],
+      "default": "cruising"
+    },
+    "assigned_altitude": {
+      "type": "number",
+      "description": "Assigned altitude in feet"
+    },
+    "assigned_heading": {
+      "type": "number",
+      "description": "Assigned heading in degrees"
+    },
+    "destination": {
+      "type": "string",
+      "description": "Target airport code"
+    },
+    "emergency_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "engine_failure",
+        "medical",
+        "fuel_low",
+        "weather"
+      ],
+      "default": "none"
+    },
+    "acknowledged_instructions": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "session_id",
+    "callsign"
+  ]
+}
