@@ -6,6 +6,8 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
 import CasperBonusRound from "./CasperBonusRound";
+import PowerUp from "./PowerUp";
+import { GHOST_TYPES, playSound, getDifficultyScaling } from "../../lib/gameConfig";
 
 export default function ARMode({ session, onUpdate }) {
   useGameSync(session.id);
@@ -17,6 +19,8 @@ export default function ARMode({ session, onUpdate }) {
   const [beamActive, setBeamActive] = useState(false);
   const [beamTarget, setBeamTarget] = useState(null);
   const [casperActive, setCasperActive] = useState(session.bonus_round_active || false);
+  const [powerUps, setPowerUps] = useState([]);
+  const [activePowerUp, setActivePowerUp] = useState(null);
 
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
@@ -32,15 +36,24 @@ export default function ARMode({ session, onUpdate }) {
       return;
     }
 
-    // Spawn ghosts for AR
+    // Spawn ghosts for AR with difficulty scaling
     const spawnGhosts = () => {
-      const newGhosts = Array.from({ length: 3 + session.current_wave }, (_, i) => ({
-        id: `ar-ghost-${Date.now()}-${i}`,
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * (window.innerHeight * 0.6) + 100,
-        type: ["Poltergeist", "Shadow Figure", "Intelligent Spirit", "Orb"][Math.floor(Math.random() * 4)],
-        health: 30 + session.current_wave * 10,
-      }));
+      const difficulty = getDifficultyScaling(session.current_wave);
+      const ghostTypeKeys = Object.keys(GHOST_TYPES);
+      
+      const newGhosts = Array.from({ length: difficulty.ghostCount }, (_, i) => {
+        const typeKey = ghostTypeKeys[Math.floor(Math.random() * ghostTypeKeys.length)];
+        const ghostType = GHOST_TYPES[typeKey];
+        return {
+          id: `ar-ghost-${Date.now()}-${i}`,
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * (window.innerHeight * 0.6) + 100,
+          type: ghostType.name,
+          typeKey,
+          health: ghostType.health * difficulty.healthMultiplier,
+          maxHealth: ghostType.health * difficulty.healthMultiplier,
+        };
+      });
       setGhosts(newGhosts);
     };
     
@@ -51,19 +64,47 @@ export default function ARMode({ session, onUpdate }) {
 
   const shootGhost = (ghostId) => {
     if (ammo > 0) {
+      playSound("shoot");
       setAmmo(ammo - 1);
       setGhosts((prev) => prev.filter((g) => g.id !== ghostId));
       setKilled(killed + 1);
+      
+      // Random power-up drop
+      if (Math.random() < 0.15) {
+        const types = ["shield", "double_damage", "slow_motion"];
+        setPowerUps((prev) => [...prev, {
+          id: `powerup-${Date.now()}`,
+          type: types[Math.floor(Math.random() * types.length)],
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * (window.innerHeight * 0.6) + 100,
+        }]);
+      }
+
+      const scoreBonus = activePowerUp === "double_damage" ? 200 : 100;
       onUpdate({
         ammo: ammo - 1,
         ghosts_killed: session.ghosts_killed + 1,
-        score: session.score + 100,
+        score: session.score + scoreBonus,
       });
     }
   };
 
+  const handlePowerUpCollect = (type) => {
+    if (!type) return;
+    playSound("powerup");
+    setActivePowerUp(type);
+    
+    let duration = 8000;
+    if (type === "double_damage") duration = 8000;
+    else if (type === "slow_motion") duration = 6000;
+    else if (type === "shield") duration = 10000;
+
+    setTimeout(() => setActivePowerUp(null), duration);
+  };
+
   const activateProtonBeam = () => {
     if (protonBeams > 0) {
+      playSound("kill");
       setBeamActive(true);
       setProtonBeams(protonBeams - 1);
       
@@ -72,10 +113,11 @@ export default function ARMode({ session, onUpdate }) {
       setGhosts([]);
       setKilled(killed + killedCount);
       
+      const scoreBonus = activePowerUp === "double_damage" ? killedCount * 400 : killedCount * 200;
       onUpdate({
         proton_beams: protonBeams - 1,
         ghosts_killed: session.ghosts_killed + killedCount,
-        score: session.score + killedCount * 200,
+        score: session.score + scoreBonus,
       });
 
       // Beam effect for 1.5 seconds
@@ -122,43 +164,57 @@ export default function ARMode({ session, onUpdate }) {
         <Crosshair className="w-12 h-12 text-primary/50 stroke-[0.5]" />
       </div>
 
+      {/* Power-ups */}
+      <AnimatePresence>
+        {powerUps.map((pu) => (
+          <PowerUp key={pu.id} x={pu.x} y={pu.y} type={pu.type} onCollect={handlePowerUpCollect} />
+        ))}
+      </AnimatePresence>
+
       {/* Ghost Targets */}
       <AnimatePresence>
-        {ghosts.map((ghost) => (
-          <motion.button
-            key={ghost.id}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.6 }}
-            onClick={() => shootGhost(ghost.id)}
-            style={{
-              left: `${ghost.x}px`,
-              top: `${ghost.y}px`,
-            }}
-            className="absolute -translate-x-1/2 -translate-y-1/2 focus:outline-none group"
-          >
-            <div className="relative">
-              {/* Ghost figure */}
-              <div className="w-20 h-24 rounded-t-full border-2 border-red-500/60 bg-red-500/10 flex items-center justify-center relative group-hover:border-red-400 group-hover:bg-red-500/20 transition-all">
-                <div className="w-3 h-3 rounded-full bg-red-400 absolute top-6" />
-                <div className="w-3 h-3 rounded-full bg-red-400 absolute top-6 right-4" />
-              </div>
+        {ghosts.map((ghost) => {
+          const ghostTypeColor = {
+            red: "border-red-500/60 bg-red-500/10",
+            purple: "border-purple-500/60 bg-purple-500/10",
+            blue: "border-blue-500/60 bg-blue-500/10",
+            yellow: "border-yellow-500/60 bg-yellow-500/10",
+          };
+          return (
+            <motion.button
+              key={ghost.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              onClick={() => shootGhost(ghost.id)}
+              style={{
+                left: `${ghost.x}px`,
+                top: `${ghost.y}px`,
+              }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 focus:outline-none group"
+            >
+              <div className="relative">
+                {/* Ghost figure */}
+                <div className={`w-20 h-24 rounded-t-full border-2 ${ghostTypeColor[GHOST_TYPES[ghost.typeKey].color] || "border-red-500/60 bg-red-500/10"} flex items-center justify-center relative group-hover:opacity-80 transition-all`}>
+                  <div className="text-2xl">{GHOST_TYPES[ghost.typeKey].emoji}</div>
+                </div>
 
-              {/* Type label */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-mono text-red-400 whitespace-nowrap">
-                {ghost.type}
-              </div>
+                {/* Type label */}
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-mono text-gray-400 whitespace-nowrap">
+                  {ghost.type}
+                </div>
 
-              {/* Health bar */}
-              <div className="w-20 h-1 bg-black/50 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="h-full bg-red-500 transition-all"
-                  style={{ width: "100%" }}
-                />
+                {/* Health bar */}
+                <div className="w-20 h-1 bg-black/50 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-red-500 transition-all"
+                    style={{ width: `${(ghost.health / ghost.maxHealth) * 100}%` }}
+                  />
+                </div>
               </div>
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+          );
+        })}
       </AnimatePresence>
 
       {/* HUD */}
@@ -217,6 +273,7 @@ export default function ARMode({ session, onUpdate }) {
         <div className="absolute bottom-4 left-4 right-4 bg-black/50 border border-primary/30 rounded px-4 py-2 backdrop-blur-sm">
           <div className="text-[10px] font-mono text-muted-foreground text-center">
             CLICK ON GHOSTS TO ELIMINATE • {ghosts.length} entities detected
+            {activePowerUp && <span className="ml-2 text-yellow-400">⚡ {activePowerUp.toUpperCase()} ACTIVE</span>}
           </div>
         </div>
       </div>
