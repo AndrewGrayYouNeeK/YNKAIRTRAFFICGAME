@@ -33,11 +33,11 @@ const navGroups = [
   },
 ];
 
-export default function AppSidebar() {
+export default function AppSidebar({ open = true }) {
   const location = useLocation();
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col z-30">
+    <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col z-30 transition-transform ${open ? "translate-x-0" : "-translate-x-full"}`}>
       {/* Brand */}
       <div className="px-5 py-4 border-b border-border">
         <div className="flex items-center gap-3">
