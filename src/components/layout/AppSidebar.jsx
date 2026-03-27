@@ -1,8 +1,14 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair } from "lucide-react";
+import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair, Gamepad2 } from "lucide-react";
 
 const navGroups = [
+  {
+    label: "GAME",
+    items: [
+      { path: "/game", icon: Gamepad2, label: "Paranormal Defense", description: "AR survival game" },
+    ],
+  },
   {
     label: "MONITORING",
     items: [
