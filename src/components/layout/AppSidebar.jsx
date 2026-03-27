@@ -4,12 +4,6 @@ import { Radar, Map, Clock, Shield, BarChart2, Eye, AlertTriangle, Crosshair, Ga
 
 const navGroups = [
   {
-    label: "GAME",
-    items: [
-      { path: "/game", icon: Gamepad2, label: "Paranormal Defense", description: "AR survival game" },
-    ],
-  },
-  {
     label: "MONITORING",
     items: [
       { path: "/", icon: Radar, label: "Live Scanner", description: "Real-time radar feed" },

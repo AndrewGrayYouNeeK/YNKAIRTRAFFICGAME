@@ -13,7 +13,6 @@ import Geofence from './pages/Geofence';
 import Watchlist from './pages/Watchlist';
 import Analytics from './pages/Analytics';
 import Incidents from './pages/Incidents';
-import Game from './pages/Game';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -49,7 +48,6 @@ const AuthenticatedApp = () => {
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/incidents" element={<Incidents />} />
-        <Route path="/game" element={<Game />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
