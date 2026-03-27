@@ -9,6 +9,7 @@ import VoiceInput from "../components/atc/VoiceInput";
 import AircraftPanel from "../components/atc/AircraftPanel";
 import RadioLog from "../components/atc/RadioLog";
 import ATCSetup from "../components/atc/ATCSetup";
+import ATCSupervisor from "../components/atc/ATCSupervisor";
 
 export default function ATC() {
   const [session, setSession] = useState(null);
@@ -142,10 +143,11 @@ export default function ATC() {
         </div>
       </div>
 
-      {/* Bottom - Radio Log & Voice Input */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-t border-border bg-card/50">
+      {/* Bottom - Radio Log, Voice Input & Supervisor */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 border-t border-border bg-card/50">
         <RadioLog entries={radioLog} />
         {listening && <VoiceInput onTranscript={handleVoiceCommand} />}
+        <ATCSupervisor session={session} />
       </div>
     </div>
   );
