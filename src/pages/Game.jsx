@@ -1,0 +1,86 @@
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Gamepad2, Radar, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import StrategyMode from "../components/game/StrategyMode";
+import ARMode from "../components/game/ARMode";
+import GameSetup from "../components/game/GameSetup";
+
+export default function Game() {
+  const queryClient = useQueryClient();
+  const [gameSession, setGameSession] = useState(null);
+
+  const { data: session, isLoading } = useQuery({
+    queryKey: ["current-game-session"],
+    queryFn: async () => {
+      const sessions = await base44.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
+      return sessions[0] || null;
+    },
+  });
+
+  const createGameMutation = useMutation({
+    mutationFn: (data) => base44.entities.GameSession.create(data),
+    onSuccess: (newSession) => {
+      setGameSession(newSession);
+      queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
+    },
+  });
+
+  const updateGameMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.GameSession.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
+    },
+  });
+
+  useEffect(() => {
+    if (session) setGameSession(session);
+  }, [session]);
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!gameSession) {
+    return (
+      <GameSetup
+        onStartGame={(data) => {
+          createGameMutation.mutate({
+            status: "active",
+            current_wave: 1,
+            total_waves: 5,
+            health: 100,
+            max_health: 100,
+            wood: 30,
+            nails: 50,
+            ammo: 100,
+            score: 0,
+            game_mode: "strategy",
+            ...data,
+          });
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-screen bg-background overflow-hidden">
+      {gameSession.game_mode === "strategy" ? (
+        <StrategyMode
+          session={gameSession}
+          onUpdate={(data) => updateGameMutation.mutate({ id: gameSession.id, data })}
+        />
+      ) : (
+        <ARMode
+          session={gameSession}
+          onUpdate={(data) => updateGameMutation.mutate({ id: gameSession.id, data })}
+        />
+      )}
+    </div>
+  );
+}

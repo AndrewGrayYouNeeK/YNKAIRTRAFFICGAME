@@ -1,0 +1,84 @@
+{
+  "name": "GameSession",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "setup",
+        "active",
+        "paused",
+        "won",
+        "lost"
+      ],
+      "default": "setup"
+    },
+    "current_wave": {
+      "type": "number",
+      "default": 1
+    },
+    "total_waves": {
+      "type": "number",
+      "default": 5
+    },
+    "health": {
+      "type": "number",
+      "default": 100
+    },
+    "max_health": {
+      "type": "number",
+      "default": 100
+    },
+    "wood": {
+      "type": "number",
+      "default": 30,
+      "description": "Resource for boarding windows"
+    },
+    "nails": {
+      "type": "number",
+      "default": 50,
+      "description": "Resource for boarding doors"
+    },
+    "ammo": {
+      "type": "number",
+      "default": 100,
+      "description": "Ammo for AR mode attacks"
+    },
+    "score": {
+      "type": "number",
+      "default": 0
+    },
+    "ghosts_killed": {
+      "type": "number",
+      "default": 0
+    },
+    "windows_boarded": {
+      "type": "number",
+      "default": 0
+    },
+    "doors_boarded": {
+      "type": "number",
+      "default": 0
+    },
+    "player_lat": {
+      "type": "number",
+      "description": "Player's current latitude"
+    },
+    "player_lng": {
+      "type": "number",
+      "description": "Player's current longitude"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "strategy",
+        "ar"
+      ],
+      "default": "strategy",
+      "description": "Current game mode"
+    }
+  },
+  "required": [
+    "status"
+  ]
+}
