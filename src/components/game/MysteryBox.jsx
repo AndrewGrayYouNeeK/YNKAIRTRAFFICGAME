@@ -8,6 +8,7 @@ const WEAPONS = [
   { name: "MORTAR", type: "mortars", value: 1 },
   { name: "AIR STRIKE", type: "air_strikes", value: 1 },
   { name: "PROTON BEAM", type: "proton_beams", value: 1 },
+  { name: "ALIEN GUN", type: "ammo", value: 150 },
   { name: "REPAIR +20", type: "health", value: 20 },
   { name: "WOOD +30", type: "wood", value: 30 },
   { name: "NAILS +40", type: "nails", value: 40 },
