@@ -44,10 +44,10 @@
       "default": 100,
       "description": "Ammo for AR mode attacks"
     },
-    "nukes": {
+    "mortars": {
       "type": "number",
       "default": 1,
-      "description": "Nuclear strikes available"
+      "description": "Mortar strikes available"
     },
     "score": {
       "type": "number",
