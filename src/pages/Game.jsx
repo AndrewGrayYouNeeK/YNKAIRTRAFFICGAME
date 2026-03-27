@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Gamepad2, Radar, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StrategyMode from "../components/game/StrategyMode";
 import ARMode from "../components/game/ARMode";
@@ -44,8 +44,7 @@ export default function Game() {
 
   const createGameMutation = useMutation({
     mutationFn: (data) => base44.entities.GameSession.create(data),
-    onSuccess: (newSession) => {
-      setGameSession(newSession);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
     },
   });
