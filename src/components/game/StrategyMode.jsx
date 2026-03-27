@@ -9,6 +9,8 @@ import MysteryBox from "./MysteryBox";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
+import { playBackgroundMusic, stopBackgroundMusic, playSound } from "../../lib/gameConfig";
+import SoundControls from "./SoundControls";
 
 export default function StrategyMode({ session, onUpdate }) {
   useGameSync(session.id);
@@ -23,6 +25,11 @@ export default function StrategyMode({ session, onUpdate }) {
     queryFn: () => base44.entities.GameSessionParticipant.filter({ session_id: session.id }),
     refetchInterval: 2000,
   });
+
+  useEffect(() => {
+    playBackgroundMusic("strategy", 0.2);
+    return () => stopBackgroundMusic();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setScanAngle((prev) => (prev + 1.5) % 360), 50);
@@ -72,6 +79,7 @@ export default function StrategyMode({ session, onUpdate }) {
   };
 
   const switchToAR = () => {
+    playSound("success", 0.15);
     onUpdate({ game_mode: "ar" });
   };
 
@@ -132,6 +140,7 @@ export default function StrategyMode({ session, onUpdate }) {
 
   return (
     <div className="w-full h-screen flex flex-col bg-background">
+      <SoundControls />
       {selectingAirStrike && (
         <MapTargeting
           session={session}

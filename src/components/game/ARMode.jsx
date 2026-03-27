@@ -7,7 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
 import CasperBonusRound from "./CasperBonusRound";
 import PowerUp from "./PowerUp";
-import { GHOST_TYPES, playSound, getDifficultyScaling } from "../../lib/gameConfig";
+import { GHOST_TYPES, playSound, getDifficultyScaling, playBackgroundMusic, stopBackgroundMusic } from "../../lib/gameConfig";
+import SoundControls from "./SoundControls";
 
 export default function ARMode({ session, onUpdate }) {
   useGameSync(session.id);
@@ -30,14 +31,21 @@ export default function ARMode({ session, onUpdate }) {
   });
 
   useEffect(() => {
+    playBackgroundMusic("ar", 0.3);
+    return () => stopBackgroundMusic();
+  }, []);
+
+  useEffect(() => {
     // Spawn Casper bonus round randomly (20% chance after wave 1)
     if (session.current_wave > 1 && Math.random() < 0.2 && !casperActive) {
+      playSound("casper", 0.2);
       setCasperActive(true);
       return;
     }
 
     // Spawn ghosts for AR with difficulty scaling
     const spawnGhosts = () => {
+      playSound("wave_start", 0.15);
       const difficulty = getDifficultyScaling(session.current_wave);
       const ghostTypeKeys = Object.keys(GHOST_TYPES);
       
@@ -216,6 +224,9 @@ export default function ARMode({ session, onUpdate }) {
           );
         })}
       </AnimatePresence>
+
+      {/* Sound Controls */}
+      <SoundControls />
 
       {/* HUD */}
       <div className="absolute inset-0 pointer-events-none">
