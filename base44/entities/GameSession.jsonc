@@ -44,6 +44,11 @@
       "default": 100,
       "description": "Ammo for AR mode attacks"
     },
+    "nukes": {
+      "type": "number",
+      "default": 1,
+      "description": "Nuclear strikes available"
+    },
     "score": {
       "type": "number",
       "default": 0

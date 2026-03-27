@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Eye, Hammer, Lock, Zap, Users } from "lucide-react";
+import { MapPin, Eye, Hammer, Lock, Zap, Users, Bomb } from "lucide-react";
 import RadarDisplay from "../radar/RadarDisplay";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ export default function StrategyMode({ session, onUpdate }) {
   useGameSync(session.id);
   const [scanAngle, setScanAngle] = useState(0);
   const [ghosts, setGhosts] = useState([]);
+  const [selectingNukeTarget, setSelectingNukeTarget] = useState(false);
 
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
@@ -62,6 +63,37 @@ export default function StrategyMode({ session, onUpdate }) {
     onUpdate({ game_mode: "ar" });
   };
 
+  const handleNukeClick = (e) => {
+    if (!selectingNukeTarget) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const distance = Math.hypot(x - centerX, y - centerY);
+    const blastRadius = 150;
+    
+    const killedGhosts = ghosts.filter(ghost => {
+      const ghostDistance = Math.hypot(ghost.x - x, ghost.y - y);
+      return ghostDistance < blastRadius;
+    }).length;
+    
+    onUpdate({
+      nukes: session.nukes - 1,
+      ghosts_killed: session.ghosts_killed + killedGhosts,
+      score: session.score + killedGhosts * 150,
+    });
+    
+    setGhosts(prev => prev.filter(ghost => {
+      const ghostDistance = Math.hypot(ghost.x - x, ghost.y - y);
+      return ghostDistance >= blastRadius;
+    }));
+    
+    setSelectingNukeTarget(false);
+  };
+
   return (
     <div className="w-full h-screen flex flex-col bg-background">
       {/* Header */}
@@ -93,10 +125,11 @@ export default function StrategyMode({ session, onUpdate }) {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 overflow-hidden">
         {/* Radar */}
         <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4 flex flex-col">
-          <div className="mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <h3 className="font-mono text-xs font-semibold tracking-wider text-foreground/80">RADAR SCAN</h3>
+            {selectingNukeTarget && <span className="text-[10px] font-mono text-destructive animate-pulse">TARGETING MODE</span>}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 cursor-crosshair" onClick={handleNukeClick}>
             <RadarDisplay drones={ghosts} scanAngle={scanAngle} />
           </div>
         </div>
@@ -162,6 +195,25 @@ export default function StrategyMode({ session, onUpdate }) {
                 <span className="text-xs font-mono font-bold">{session.ammo}</span>
               </div>
               <p className="text-[9px] text-muted-foreground italic">Used in AR mode</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Bomb className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-[10px] font-mono text-muted-foreground">NUKES</span>
+                </div>
+                <span className="text-xs font-mono font-bold">{session.nukes}</span>
+              </div>
+              <Button
+                onClick={() => setSelectingNukeTarget(!selectingNukeTarget)}
+                disabled={session.nukes < 1}
+                size="sm"
+                variant={selectingNukeTarget ? "default" : "outline"}
+                className="w-full font-mono text-[10px] bg-red-500/20 hover:bg-red-500/30 border-red-500/50"
+              >
+                {selectingNukeTarget ? "TARGETING..." : "LAUNCH NUKE"}
+              </Button>
             </div>
           </div>
 
