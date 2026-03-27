@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Play, Pause, RotateCcw } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ATCRadar from "../components/atc/ATCRadar";
@@ -35,11 +35,6 @@ export default function ATC() {
     queryFn: () => (session ? base44.entities.Aircraft.filter({ session_id: session.id }) : []),
     enabled: !!session,
     refetchInterval: 500,
-  });
-
-  const updateSessionMutation = useMutation({
-    mutationFn: (data) => base44.entities.ATCSession.update(session.id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atc-sessions"] }),
   });
 
   const addRadioLogEntry = (pilot, message, type = "pilot") => {
