@@ -1,0 +1,43 @@
+{
+  "name": "GameSessionParticipant",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Reference to GameSession"
+    },
+    "player_email": {
+      "type": "string",
+      "description": "Player's email"
+    },
+    "player_name": {
+      "type": "string",
+      "description": "Player's name"
+    },
+    "player_lat": {
+      "type": "number",
+      "description": "Player's latitude"
+    },
+    "player_lng": {
+      "type": "number",
+      "description": "Player's longitude"
+    },
+    "health": {
+      "type": "number",
+      "default": 100
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "eliminated",
+        "idle"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "session_id",
+    "player_email"
+  ]
+}

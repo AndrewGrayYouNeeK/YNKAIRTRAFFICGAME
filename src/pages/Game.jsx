@@ -13,6 +13,12 @@ export default function Game() {
   const queryClient = useQueryClient();
   const [gameSession, setGameSession] = useState(null);
   const [showLobby, setShowLobby] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Get current user
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => setCurrentUser(null));
+  }, []);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["current-game-session"],
@@ -20,8 +26,21 @@ export default function Game() {
       const sessions = await base44.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
       return sessions[0] || null;
     },
-    refetchInterval: 3000,
+    refetchInterval: 2000,
   });
+
+  // Subscribe to real-time game updates
+  useEffect(() => {
+    if (!session) return;
+    
+    const unsubscribe = base44.entities.GameSession.subscribe((event) => {
+      if (event.id === session.id) {
+        queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
+      }
+    });
+
+    return unsubscribe;
+  }, [session?.id, queryClient]);
 
   const createGameMutation = useMutation({
     mutationFn: (data) => base44.entities.GameSession.create(data),
@@ -54,7 +73,16 @@ export default function Game() {
     return (
       <MultiplayerLobby
         onStartGame={() => setShowLobby(false)}
-        onJoinGame={(session) => {
+        onJoinGame={async (session) => {
+          // Add player as participant
+          if (currentUser) {
+            await base44.entities.GameSessionParticipant.create({
+              session_id: session.id,
+              player_email: currentUser.email,
+              player_name: currentUser.full_name,
+              status: "active",
+            });
+          }
           setGameSession(session);
           setShowLobby(false);
         }}

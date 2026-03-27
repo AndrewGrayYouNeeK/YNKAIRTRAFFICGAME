@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Eye, ChevronLeft, Crosshair, Zap } from "lucide-react";
+import { Eye, ChevronLeft, Crosshair, Zap, Users } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { useGameSync } from "../../hooks/useGameSync";
 
 export default function ARMode({ session, onUpdate }) {
+  useGameSync(session.id);
   const canvasRef = useRef(null);
   const [ghosts, setGhosts] = useState([]);
   const [ammo, setAmmo] = useState(session.ammo);
   const [killed, setKilled] = useState(0);
+
+  // Fetch other players in session
+  const { data: participants = [] } = useQuery({
+    queryKey: ["game-participants", session.id],
+    queryFn: () => base44.entities.GameSessionParticipant.filter({ session_id: session.id }),
+    refetchInterval: 2000,
+  });
 
   useEffect(() => {
     // Spawn ghosts for AR
@@ -99,10 +110,16 @@ export default function ARMode({ session, onUpdate }) {
       <div className="absolute inset-0 pointer-events-none">
         {/* Top HUD */}
         <div className="absolute top-4 left-4 right-4 pointer-events-auto space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div className="bg-black/50 border border-primary/50 rounded px-3 py-1.5 backdrop-blur-sm">
               <div className="text-[10px] font-mono text-muted-foreground">WAVE {session.current_wave}</div>
             </div>
+            {participants.length > 0 && (
+              <div className="bg-black/50 border border-primary/50 rounded px-3 py-1.5 backdrop-blur-sm flex items-center gap-1.5">
+                <Users className="w-3 h-3 text-primary" />
+                <div className="text-[10px] font-mono text-primary">{participants.length} defending</div>
+              </div>
+            )}
             <Button
               onClick={exitAR}
               size="sm"

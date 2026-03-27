@@ -2,12 +2,23 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Eye, Hammer, Lock, Zap } from "lucide-react";
+import { MapPin, Eye, Hammer, Lock, Zap, Users } from "lucide-react";
 import RadarDisplay from "../radar/RadarDisplay";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { useGameSync } from "../../hooks/useGameSync";
 
 export default function StrategyMode({ session, onUpdate }) {
+  useGameSync(session.id);
   const [scanAngle, setScanAngle] = useState(0);
   const [ghosts, setGhosts] = useState([]);
+
+  // Fetch other players in session
+  const { data: participants = [] } = useQuery({
+    queryKey: ["game-participants", session.id],
+    queryFn: () => base44.entities.GameSessionParticipant.filter({ session_id: session.id }),
+    refetchInterval: 2000,
+  });
 
   useEffect(() => {
     const interval = setInterval(() => setScanAngle((prev) => (prev + 1.5) % 360), 50);
@@ -60,13 +71,21 @@ export default function StrategyMode({ session, onUpdate }) {
             <h2 className="font-mono text-sm font-bold text-foreground">STRATEGY MODE</h2>
             <p className="text-[10px] text-muted-foreground">Wave {session.current_wave}/{session.total_waves}</p>
           </div>
-          <Button
-            onClick={switchToAR}
-            size="sm"
-            className="font-mono text-xs gap-2 bg-primary/20 hover:bg-primary/30"
-          >
-            <Eye className="w-3.5 h-3.5" /> ENTER AR
-          </Button>
+          <div className="flex items-center gap-3">
+            {participants.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-primary/20 px-3 py-1.5 rounded-lg">
+                <Users className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-mono text-primary">{participants.length} players</span>
+              </div>
+            )}
+            <Button
+              onClick={switchToAR}
+              size="sm"
+              className="font-mono text-xs gap-2 bg-primary/20 hover:bg-primary/30"
+            >
+              <Eye className="w-3.5 h-3.5" /> ENTER AR
+            </Button>
+          </div>
         </div>
       </div>
 
