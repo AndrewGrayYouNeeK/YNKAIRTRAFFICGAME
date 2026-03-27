@@ -5,6 +5,7 @@ import { Eye, ChevronLeft, Crosshair, Zap, Users, Zap as ZapIcon } from "lucide-
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
+import CasperBonusRound from "./CasperBonusRound";
 
 export default function ARMode({ session, onUpdate }) {
   useGameSync(session.id);
@@ -15,6 +16,7 @@ export default function ARMode({ session, onUpdate }) {
   const [killed, setKilled] = useState(0);
   const [beamActive, setBeamActive] = useState(false);
   const [beamTarget, setBeamTarget] = useState(null);
+  const [casperActive, setCasperActive] = useState(session.bonus_round_active || false);
 
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
@@ -24,6 +26,12 @@ export default function ARMode({ session, onUpdate }) {
   });
 
   useEffect(() => {
+    // Spawn Casper bonus round randomly (20% chance after wave 1)
+    if (session.current_wave > 1 && Math.random() < 0.2 && !casperActive) {
+      setCasperActive(true);
+      return;
+    }
+
     // Spawn ghosts for AR
     const spawnGhosts = () => {
       const newGhosts = Array.from({ length: 3 + session.current_wave }, (_, i) => ({
@@ -35,8 +43,11 @@ export default function ARMode({ session, onUpdate }) {
       }));
       setGhosts(newGhosts);
     };
-    spawnGhosts();
-  }, [session.current_wave]);
+    
+    if (!casperActive) {
+      spawnGhosts();
+    }
+  }, [session.current_wave, casperActive]);
 
   const shootGhost = (ghostId) => {
     if (ammo > 0) {
@@ -78,6 +89,16 @@ export default function ARMode({ session, onUpdate }) {
       ammo,
     });
   };
+
+  if (casperActive) {
+    return (
+      <CasperBonusRound
+        session={session}
+        onUpdate={(data) => onUpdate(data)}
+        onComplete={() => setCasperActive(false)}
+      />
+    );
+  }
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-blue-900/20 via-background to-background relative overflow-hidden">

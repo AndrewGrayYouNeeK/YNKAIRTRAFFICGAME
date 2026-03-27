@@ -59,6 +59,11 @@
       "default": 2,
       "description": "Proton pack charges available"
     },
+    "traps": {
+      "type": "number",
+      "default": 1,
+      "description": "Ghost traps for Casper capture"
+    },
     "score": {
       "type": "number",
       "default": 0
@@ -91,6 +96,11 @@
       ],
       "default": "strategy",
       "description": "Current game mode"
+    },
+    "bonus_round_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether Casper bonus round is active"
     }
   },
   "required": [
