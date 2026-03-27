@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Eye, Hammer, Lock, Zap, Users, Flame, Zap as ZapIcon } from "lucide-react";
 import RadarDisplay from "../radar/RadarDisplay";
 import MapTargeting from "./MapTargeting";
+import MysteryBox from "./MysteryBox";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
@@ -122,6 +123,11 @@ export default function StrategyMode({ session, onUpdate }) {
     }));
     
     setSelectingAirStrike(false);
+  };
+
+  const handleMysteryBoxReward = (weapon) => {
+    const updates = { [weapon.type]: session[weapon.type] + weapon.value };
+    onUpdate(updates);
   };
 
   return (
@@ -293,6 +299,9 @@ export default function StrategyMode({ session, onUpdate }) {
           </div>
         </div>
       </div>
+
+      {/* Mystery Box */}
+      <MysteryBox onUnbox={handleMysteryBoxReward} />
 
       {/* Footer */}
       <div className="p-4 border-t border-border bg-card/50 text-center text-[10px] font-mono text-muted-foreground">
