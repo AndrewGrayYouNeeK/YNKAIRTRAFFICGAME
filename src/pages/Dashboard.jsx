@@ -54,7 +54,7 @@ export default function Dashboard() {
     const initial = Array.from({ length: 4 }, (_, i) => generateDrone(i));
     setDrones(initial);
     initial.forEach((d) => {
-      addEvent("detected", `${d.id} (${d.model}) detected at ${d.distance}m`);
+      addEvent("detected", `Contact: ${d.callsign} (${d.model}) at ${d.altitude.toLocaleString()}ft, ${d.speed}kts`);
       saveDetection(d);
     });
   }, [addEvent, saveDetection]);
@@ -78,7 +78,7 @@ export default function Dashboard() {
           if (Math.random() < 0.15 && updated.length < 10) {
             const newDrone = generateDrone(updated.length);
             updated = [...updated, newDrone];
-            addEvent("detected", `New contact: ${newDrone.id} (${newDrone.model}) at ${newDrone.distance}m`);
+            addEvent("detected", `New contact: ${newDrone.callsign} (${newDrone.model}) FL${Math.round(newDrone.altitude/100)}, ${newDrone.speed}kts`);
             saveDetection(newDrone);
           }
 
@@ -132,7 +132,7 @@ export default function Dashboard() {
     <div className="p-6 space-y-5 max-w-[1600px]">
       <PageHeader
         title="Live Scanner"
-        subtitle="Real-time drone detection, Remote ID & RF monitoring"
+        subtitle="Real-time aircraft tracking, transponder & RF monitoring"
         icon={Radar}
         actions={
           <ScanControls
@@ -213,7 +213,7 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center mb-3">
                 <div className="w-2 h-2 rounded-full bg-primary/40" />
               </div>
-              <p className="text-xs text-muted-foreground font-mono">Select a drone from the feed</p>
+              <p className="text-xs text-muted-foreground font-mono">Select an aircraft from the feed</p>
               <p className="text-[10px] text-muted-foreground/60 mt-1">to view detailed information</p>
             </div>
           )}

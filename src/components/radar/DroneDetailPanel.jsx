@@ -1,15 +1,15 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Navigation, ArrowUp, Gauge, Signal, Radio, Compass, Eye, Clock, MapPin } from "lucide-react";
+import { X, Navigation, ArrowUp, Gauge, Signal, Radio, Compass, Clock, MapPin, Plane } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 const threatBadgeStyles = {
-  none: "bg-green-500/10 text-green-400 border-green-500/30",
-  low: "bg-green-500/10 text-green-400 border-green-500/30",
-  medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  high: "bg-orange-500/10 text-orange-400 border-orange-500/30",
+  none:     "bg-green-500/10 text-green-400 border-green-500/30",
+  low:      "bg-green-500/10 text-green-400 border-green-500/30",
+  medium:   "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
+  high:     "bg-orange-500/10 text-orange-400 border-orange-500/30",
   critical: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
@@ -38,14 +38,16 @@ export default function DroneDetailPanel({ drone, onClose }) {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-primary blip-animate" />
-              <h3 className="font-mono text-sm font-bold tracking-wider">{drone.id}</h3>
+              <Plane className="w-4 h-4 text-primary" />
+              <h3 className="font-mono text-sm font-bold tracking-wider">{drone.callsign}</h3>
               <Badge variant="outline" className={`text-[10px] font-mono ${threatBadgeStyles[drone.threatLevel]}`}>
                 {drone.threatLevel.toUpperCase()}
               </Badge>
             </div>
             <p className="text-sm text-foreground/80">{drone.model}</p>
-            <p className="text-xs text-muted-foreground font-mono">{drone.brand} · {drone.category}</p>
+            <p className="text-xs text-muted-foreground font-mono">
+              {drone.icao} · {drone.category} · {drone.wake} wake turbulence
+            </p>
           </div>
           <Button size="icon" variant="ghost" onClick={onClose} className="h-7 w-7">
             <X className="w-4 h-4" />
@@ -54,26 +56,41 @@ export default function DroneDetailPanel({ drone, onClose }) {
 
         {/* Detail Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <DetailItem icon={Navigation} label="Distance" value={`${drone.distance}m`} />
-          <DetailItem icon={ArrowUp} label="Altitude" value={`${drone.altitude}m AGL`} />
-          <DetailItem icon={Gauge} label="Speed" value={`${drone.speed} km/h`} />
-          <DetailItem icon={Compass} label="Heading" value={`${drone.heading}°`} />
-          <DetailItem icon={Eye} label="Bearing" value={`${drone.bearing}°`} />
-          <DetailItem icon={Radio} label="Frequency" value={drone.frequency} />
-          <DetailItem icon={MapPin} label="Position" value={`${drone.lat.toFixed(4)}, ${drone.lng.toFixed(4)}`} />
-          <DetailItem icon={Clock} label="First Seen" value={formatTimeSince(drone.firstDetected)} />
+          <DetailItem icon={ArrowUp}    label="Altitude"  value={`${drone.altitude.toLocaleString()} ft MSL`} />
+          <DetailItem icon={Gauge}      label="Speed"     value={`${drone.speed} kts IAS`} />
+          <DetailItem icon={Compass}    label="Heading"   value={`${drone.heading}° true`} />
+          <DetailItem icon={Navigation} label="Distance"  value={`${drone.distance}m`} />
+          <DetailItem icon={Radio}      label="Squawk"    value={`${drone.squawk}`} />
+          <DetailItem icon={Radio}      label="Frequency" value={drone.frequency} />
+          <DetailItem icon={MapPin}     label="Position"  value={`${drone.lat.toFixed(4)}, ${drone.lng.toFixed(4)}`} />
+          <DetailItem icon={Clock}      label="Contact"   value={formatTimeSince(drone.firstDetected)} />
         </div>
 
-        {/* Signal Strength */}
+        {/* Transponder Signal */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Signal className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Signal Strength</span>
+              <span className="text-xs text-muted-foreground">Transponder Signal</span>
             </div>
             <span className="font-mono text-xs text-foreground">{drone.signal} dBm</span>
           </div>
           <Progress value={signalStrength} className="h-1.5" />
+        </div>
+
+        {/* ATC Radio Log */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Radio Traffic</p>
+          <div className="bg-black/30 rounded-lg p-3 space-y-2">
+            <div>
+              <span className="text-[9px] font-mono text-cyan-500 tracking-wider">ATC ▶</span>
+              <p className="text-[11px] font-mono text-cyan-300 mt-0.5 leading-relaxed">{drone.atcRadio}</p>
+            </div>
+            <div className="border-t border-border/30 pt-2">
+              <span className="text-[9px] font-mono text-green-500 tracking-wider">PILOT ▶</span>
+              <p className="text-[11px] font-mono text-green-300 mt-0.5 leading-relaxed">{drone.pilotRadio}</p>
+            </div>
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>

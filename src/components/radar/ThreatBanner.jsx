@@ -7,22 +7,22 @@ const threatConfig = {
     bg: "bg-destructive/10 border-destructive/40",
     text: "text-destructive",
     icon: ShieldAlert,
-    label: "CRITICAL THREAT",
-    description: "Unidentified drone in restricted proximity",
+    label: "SEPARATION ALERT",
+    description: "Aircraft within critical proximity — possible conflict",
   },
   high: {
     bg: "bg-orange-500/10 border-orange-500/40",
     text: "text-orange-400",
     icon: AlertTriangle,
-    label: "HIGH ALERT",
-    description: "Drone detected within 200m radius",
+    label: "TRAFFIC ADVISORY",
+    description: "Aircraft inside 10nm — verify separation",
   },
   medium: {
     bg: "bg-yellow-500/10 border-yellow-500/40",
     text: "text-yellow-400",
     icon: Radio,
-    label: "PROXIMITY WARNING",
-    description: "Drone approaching detection zone",
+    label: "CONTACT ADVISORY",
+    description: "Multiple aircraft entering controlled airspace",
   },
 };
 
@@ -45,7 +45,7 @@ export default function ThreatBanner({ highestThreat, droneCount }) {
             {config.label}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            {config.description} — {droneCount} active target{droneCount !== 1 ? "s" : ""}
+            {config.description} — {droneCount} contact{droneCount !== 1 ? "s" : ""} on scope
           </div>
         </div>
         <div className={`font-mono text-xs ${config.text} shrink-0`}>

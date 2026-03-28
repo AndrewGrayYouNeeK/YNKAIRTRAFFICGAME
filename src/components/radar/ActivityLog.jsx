@@ -33,7 +33,7 @@ export default function ActivityLog({ events }) {
         <div className="p-2 space-y-0.5">
           {events.length === 0 ? (
             <div className="text-xs text-muted-foreground text-center py-6 font-mono">
-              No activity recorded
+              No contacts on scope
             </div>
           ) : (
             events.map((event, i) => {

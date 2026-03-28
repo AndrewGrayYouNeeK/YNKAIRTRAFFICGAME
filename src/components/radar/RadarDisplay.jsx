@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 
 const RINGS = [0.25, 0.5, 0.75, 1.0];
-const RANGE_LABELS = ["500m", "1km", "1.5km", "2km"];
+const RANGE_LABELS = ["10nm", "20nm", "30nm", "40nm"];
 
 const threatColors = {
   none: "#22c55e",
@@ -111,7 +111,7 @@ export default function RadarDisplay({ drones, scanAngle }) {
         <circle cx="50" cy="50" r="1.2" fill="hsl(199, 89%, 48%)" opacity="0.8" />
         <circle cx="50" cy="50" r="2" fill="none" stroke="hsl(199, 89%, 48%)" strokeWidth="0.2" opacity="0.4" />
 
-        {/* Drone blips */}
+        {/* Aircraft blips */}
         {droneBlips.map((drone) => (
           <g key={drone.id}>
             {/* Pulse ring for threats */}
@@ -163,7 +163,7 @@ export default function RadarDisplay({ drones, scanAngle }) {
               fontFamily="var(--font-mono)"
               opacity="0.6"
             >
-              {drone.distance}m
+              {Math.round(drone.altitude / 100)}↑ {drone.speed}kt
             </text>
           </g>
         ))}
