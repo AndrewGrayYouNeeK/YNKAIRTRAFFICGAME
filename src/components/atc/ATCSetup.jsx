@@ -1,76 +1,67 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
-import { Plane } from "lucide-react";
+import { Plane, Globe } from "lucide-react";
+import AirportSelector from "./AirportSelector";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ATCSetup({ onSessionCreated }) {
-  const [difficulty, setDifficulty] = useState("easy");
+  const [selectedAirport, setSelectedAirport] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Get total successful landings across all past sessions
+  const { data: pastSessions = [] } = useQuery({
+    queryKey: ["atc-past-sessions"],
+    queryFn: () => base44.entities.ATCSession.filter({ status: "completed" }),
+  });
+
+  const totalLandings = pastSessions.reduce((sum, s) => sum + (s.successful_landings || 0), 0);
+
   const startGame = async () => {
+    if (!selectedAirport) return;
     setLoading(true);
-    const maxAircraft = difficulty === "easy" ? 3 : difficulty === "medium" ? 6 : 10;
     const session = await base44.entities.ATCSession.create({
       status: "active",
-      difficulty,
-      level: 1,
-      max_aircraft: maxAircraft,
+      difficulty: selectedAirport.difficulty,
+      level: selectedAirport.level,
+      max_aircraft: selectedAirport.maxAircraft,
+      airport_id: selectedAirport.id,
     });
-    onSessionCreated(session);
+    onSessionCreated({ ...session, airport: selectedAirport });
     setLoading(false);
   };
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-background via-card to-background flex items-center justify-center p-6">
-      <div className="max-w-md text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto">
-          <Plane className="w-8 h-8 text-primary" />
-        </div>
-
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Air Traffic Control</h1>
-          <p className="text-sm text-muted-foreground font-mono">Guide aircraft to safe landings using voice commands</p>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">Select difficulty level:</p>
-          <div className="grid grid-cols-3 gap-2">
-            {["easy", "medium", "hard"].map((level) => (
-              <button
-                key={level}
-                onClick={() => setDifficulty(level)}
-                className={`py-2 rounded-lg font-mono text-xs transition-all ${
-                  difficulty === level
-                    ? "bg-primary text-primary-foreground border border-primary"
-                    : "bg-secondary border border-border hover:bg-secondary/80"
-                }`}
-              >
-                {level.toUpperCase()}
-              </button>
-            ))}
+    <div className="w-full min-h-screen bg-background flex flex-col items-center justify-start p-6 overflow-y-auto">
+      <div className="w-full max-w-4xl space-y-6 py-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto">
+            <Globe className="w-8 h-8 text-primary" />
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            {difficulty === "easy"
-              ? "3 aircraft max • No emergencies"
-              : difficulty === "medium"
-              ? "6 aircraft max • Random emergencies"
-              : "10 aircraft max • Complex scenarios"}
+          <h1 className="text-3xl font-bold text-foreground">Air Traffic Control</h1>
+          <p className="text-sm text-muted-foreground font-mono">
+            Choose your airport · Guide planes through live weather · Unlock new challenges
           </p>
         </div>
 
-        <Button
-          onClick={startGame}
-          disabled={loading}
-          size="lg"
-          className="w-full font-mono text-sm gap-2"
-        >
-          <Plane className="w-4 h-4" />
-          {loading ? "Starting..." : "START CONTROL"}
-        </Button>
+        {/* Airport selector */}
+        <AirportSelector totalLandings={totalLandings} onSelect={setSelectedAirport} />
 
-        <p className="text-[10px] text-muted-foreground">
-          Use voice commands to control aircraft • Guide them to landing safely
-        </p>
+        {/* Start button */}
+        {selectedAirport && (
+          <div className="sticky bottom-4">
+            <Button
+              onClick={startGame}
+              disabled={loading}
+              size="lg"
+              className="w-full font-mono text-sm gap-2 shadow-lg"
+            >
+              <Plane className="w-4 h-4" />
+              {loading ? "Initializing..." : `Start Control — ${selectedAirport.id} ${selectedAirport.name}`}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

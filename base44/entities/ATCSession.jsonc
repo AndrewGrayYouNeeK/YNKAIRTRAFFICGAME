@@ -18,14 +18,20 @@
       "enum": [
         "easy",
         "medium",
-        "hard"
+        "hard",
+        "expert",
+        "extreme"
       ],
       "default": "easy"
     },
     "level": {
       "type": "number",
       "default": 1,
-      "description": "Current level (1-10)"
+      "description": "Airport level (1-5)"
+    },
+    "airport_id": {
+      "type": "string",
+      "description": "ICAO code of selected airport (e.g. KLAX, VNLK)"
     },
     "score": {
       "type": "number",
