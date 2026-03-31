@@ -177,6 +177,9 @@ const ATC_STYLES = `
   border-radius: 8px;
   padding: 24px;
   max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
   text-align: center;
 }
@@ -192,6 +195,8 @@ const ATC_STYLES = `
   font-size: 12px;
   margin: 16px 0;
   line-height: 1.6;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .briefing-content p {
