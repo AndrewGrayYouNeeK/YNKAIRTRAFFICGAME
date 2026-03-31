@@ -1,6 +1,4 @@
 import React, { useRef, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import "./radar.css";
 
 const GRID_SIZE = 500; // px
 const MAX_RANGE = 50; // nm

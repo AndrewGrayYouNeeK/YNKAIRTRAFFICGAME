@@ -1,5 +1,4 @@
 import React from "react";
-import "./radar.css";
 
 export default function AltitudeLadder({ selectedPlane }) {
   if (!selectedPlane) return null;
