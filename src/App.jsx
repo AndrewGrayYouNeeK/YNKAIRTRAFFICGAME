@@ -13,7 +13,7 @@ import Geofence from './pages/Geofence';
 import Watchlist from './pages/Watchlist';
 import Analytics from './pages/Analytics';
 import Incidents from './pages/Incidents';
-import ATC from './pages/ATC';
+import ATC from './pages/ATCv2';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
