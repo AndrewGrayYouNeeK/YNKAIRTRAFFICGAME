@@ -42,14 +42,14 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<ATC />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/map" element={<MapView />} />
         <Route path="/history" element={<History />} />
         <Route path="/geofence" element={<Geofence />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/incidents" element={<Incidents />} />
-        <Route path="/atc" element={<ATC />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
