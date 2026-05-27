@@ -132,7 +132,7 @@ function parseHeading(tokens) {
   if (headingIndex === -1) return null;
   const digits = extractDigitSequence(tokens, headingIndex + 1).value;
   if (!digits) return null;
-  const value = Number.parseInt(digits.slice(0, 3), 10);
+  const value = Number.parseInt(digits, 10);
   if (Number.isNaN(value)) return null;
   return Math.max(0, Math.min(360, value));
 }
@@ -170,11 +170,11 @@ function parseSpeed(tokens) {
 function parseRunway(tokens) {
   const runwayIndex = tokens.indexOf("runway");
   if (runwayIndex === -1) return null;
-  const digits = extractDigitSequence(tokens, runwayIndex + 1).value;
+  const { value: digits, nextIndex } = extractDigitSequence(tokens, runwayIndex + 1);
   if (!digits) return null;
-  const side = tokens[runwayIndex + 3];
+  const side = tokens[nextIndex];
   const suffix = side === "left" ? "L" : side === "right" ? "R" : side === "center" ? "C" : "";
-  return `${Number.parseInt(digits, 10)}${suffix}`;
+  return `${digits.padStart(2, "0")}${suffix}`;
 }
 
 function parseFrequency(tokens) {

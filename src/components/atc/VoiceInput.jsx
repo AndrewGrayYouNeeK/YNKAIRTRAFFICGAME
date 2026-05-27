@@ -12,6 +12,7 @@ export default function VoiceInput({
   selectedPlane = null,
 }) {
   const recognitionRef = useRef(null);
+  const isTransmittingRef = useRef(false);
   const latestInterimRef = useRef("");
   const latestFinalRef = useRef("");
   const [isTransmitting, setIsTransmitting] = useState(false);
@@ -23,9 +24,9 @@ export default function VoiceInput({
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
     const buffer = ctx.createBuffer(1, 800, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i += 1) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const channelData = buffer.getChannelData(0);
+    for (let i = 0; i < channelData.length; i += 1) {
+      channelData[i] = (Math.random() * 2 - 1) * (1 - i / channelData.length);
     }
     const src = ctx.createBufferSource();
     const filter = ctx.createBiquadFilter();
@@ -54,8 +55,9 @@ export default function VoiceInput({
   };
 
   const startTransmission = () => {
-    if (!RecognitionClass || isTransmitting) return;
+    if (!RecognitionClass || isTransmittingRef.current) return;
     playSquelchClick(true);
+    isTransmittingRef.current = true;
     setIsTransmitting(true);
     const recognition = new RecognitionClass();
     recognition.continuous = true;
@@ -74,6 +76,7 @@ export default function VoiceInput({
       setInterim(interimTranscript);
     };
     recognition.onerror = () => {
+      isTransmittingRef.current = false;
       setIsTransmitting(false);
     };
     recognitionRef.current = recognition;
@@ -81,8 +84,9 @@ export default function VoiceInput({
   };
 
   const stopTransmission = () => {
-    if (!isTransmitting) return;
+    if (!isTransmittingRef.current) return;
     playSquelchClick(false);
+    isTransmittingRef.current = false;
     recognitionRef.current?.stop();
     setIsTransmitting(false);
     processTranscript();
@@ -106,7 +110,7 @@ export default function VoiceInput({
       window.removeEventListener("keyup", onKeyUp);
       recognitionRef.current?.stop();
     };
-  });
+  }, [aircraft, selectedPlane, onCommand, onTranscript]);
 
   if (!RecognitionClass) {
     return (

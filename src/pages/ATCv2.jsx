@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import AtcRadarV2 from "../components/atc/AtcRadarV2";
 import ControlPanel from "../components/atc/ControlPanel";
@@ -74,16 +74,18 @@ export default function ATCv2() {
   const timeRef = useRef(0);
   const aircraftCountRef = useRef(0);
   const activeViolationPairsRef = useRef(new Set());
+  const logIdRef = useRef(0);
 
-  const addRadioLog = (source, message) => {
+  const addRadioLog = useCallback((source, message) => {
     const timestamp = new Date().toLocaleTimeString();
-    setRadioLog((prev) => [...prev.slice(-7), { id: Date.now() + Math.random(), timestamp, source, message }]);
-  };
+    logIdRef.current += 1;
+    setRadioLog((prev) => [...prev.slice(-7), { id: logIdRef.current, timestamp, source, message }]);
+  }, []);
 
-  const transmitATC = (message, rate = 1) => {
+  const transmitATC = useCallback((message, rate = 1) => {
     speakText(message, rate);
     addRadioLog("ATC", message);
-  };
+  }, [addRadioLog]);
 
   useEffect(() => {
     if (gameState !== GAME_STATE.ACTIVE || !session) return undefined;
@@ -152,7 +154,7 @@ export default function ATCv2() {
     return () => {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [gameState, session, wind, emergency]);
+  }, [gameState, session, wind, emergency, transmitATC, addRadioLog]);
 
   useEffect(() => {
     if (separationCount >= 3 && gameState !== GAME_STATE.GAMEOVER) {
@@ -201,7 +203,7 @@ export default function ATCv2() {
       case "set_speed":
         setAircraft((prev) => prev.map((p) => (p.id === target.id ? { ...p, desiredSpeed: cmd.value } : p)));
         sounds.headingLock();
-        transmitATC(`${target.callsign}, reduce speed to ${cmd.value} knots.`);
+        transmitATC(`${target.callsign}, set speed ${cmd.value} knots.`);
         break;
       case "set_altitude":
         setAircraft((prev) => prev.map((p) => (p.id === target.id ? { ...p, desiredAltitude: cmd.value } : p)));

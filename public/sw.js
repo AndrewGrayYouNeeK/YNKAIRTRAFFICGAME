@@ -17,7 +17,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  const isApi = event.request.headers.get('accept')?.includes('application/json') || url.pathname.startsWith('/api');
+  const isApi = url.pathname.startsWith('/api');
 
   if (isApi) {
     event.respondWith(
