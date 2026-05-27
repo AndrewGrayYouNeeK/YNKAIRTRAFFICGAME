@@ -1,9 +1,17 @@
-import React, { useState } from "react";
-import { Mic, Zap, AlertTriangle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 
-export default function ControlPanel({ selectedPlane, onCommand, emergency }) {
+export default function ControlPanel({ selectedPlane, onCommand }) {
   const [speed, setSpeed] = useState(selectedPlane?.desiredSpeed || 250);
   const [altitude, setAltitude] = useState(selectedPlane?.desiredAltitude || 5000);
+  const [heading, setHeading] = useState(selectedPlane?.desiredHeading || 0);
+
+  useEffect(() => {
+    if (!selectedPlane) return;
+    setSpeed(Math.round(selectedPlane.desiredSpeed || selectedPlane.speed || 250));
+    setAltitude(Math.round(selectedPlane.desiredAltitude || selectedPlane.altitude || 5000));
+    setHeading(Math.round(selectedPlane.desiredHeading || selectedPlane.actualHeading || 0));
+  }, [selectedPlane]);
 
   const handleSpeedChange = (e) => {
     const val = parseInt(e.target.value);
@@ -19,6 +27,16 @@ export default function ControlPanel({ selectedPlane, onCommand, emergency }) {
 
   const handleGoAround = () => {
     onCommand({ type: "go_around" });
+  };
+
+  const handleHeadingChange = (e) => {
+    const val = parseInt(e.target.value, 10);
+    setHeading(val);
+    onCommand({ type: "set_heading", value: val });
+  };
+
+  const handleClearedToLand = () => {
+    onCommand({ type: "cleared_to_land" });
   };
 
   if (!selectedPlane) {
@@ -60,6 +78,20 @@ export default function ControlPanel({ selectedPlane, onCommand, emergency }) {
       {/* Commands */}
       <div className="commands-section">
         <div className="command-group">
+          <label className="command-label">Heading (HDG)</label>
+          <input
+            type="range"
+            min="0"
+            max="360"
+            step="5"
+            value={heading}
+            onChange={handleHeadingChange}
+            className="slider"
+          />
+          <span className="slider-value">{heading}°</span>
+        </div>
+
+        <div className="command-group">
           <label className="command-label">Altitude</label>
           <input
             type="range"
@@ -89,6 +121,9 @@ export default function ControlPanel({ selectedPlane, onCommand, emergency }) {
 
         <button className="cmd-btn go-around" onClick={handleGoAround}>
           ⤴ GO AROUND
+        </button>
+        <button className="cmd-btn clear-land" onClick={handleClearedToLand}>
+          ✅ CLEARED TO LAND
         </button>
       </div>
 
@@ -245,6 +280,16 @@ const style = `
 .cmd-btn.go-around:hover {
   background: rgba(255, 170, 0, 0.2);
   box-shadow: 0 0 12px rgba(255, 170, 0, 0.4);
+}
+
+.cmd-btn.clear-land {
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.cmd-btn.clear-land:hover {
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
 }
 
 .emergency-info {

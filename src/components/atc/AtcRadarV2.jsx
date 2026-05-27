@@ -1,215 +1,251 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-const GRID_SIZE = 500; // px
-const MAX_RANGE = 50; // nm
-const PX_PER_NM = GRID_SIZE / (2 * MAX_RANGE);
+const MAX_RANGE_NM = 50;
+const RUNWAY_HEADING = 280;
+
+const toRadians = (deg) => (deg * Math.PI) / 180;
+const lateralDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export default function AtcRadarV2({
   aircraft,
   wind,
   selectedPlane,
   onSelectPlane,
-  onDragPlane,
   weatherEffects,
 }) {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const [hoveredId, setHoveredId] = useState(null);
+  const trailRef = useRef([]);
+  const sweepRef = useRef(0);
+  const [size, setSize] = useState(500);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const next = Math.max(260, Math.floor(Math.min(entry.contentRect.width, entry.contentRect.height || entry.contentRect.width)));
+      setSize(next);
+    });
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return undefined;
+    canvas.width = size;
+    canvas.height = size;
+  }, [size]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
     const ctx = canvas.getContext("2d");
-    const centerX = GRID_SIZE / 2;
-    const centerY = GRID_SIZE / 2;
+    let frame = 0;
+    let rafId;
 
-    // Clear
-    ctx.fillStyle = "#0a1929";
-    ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
+    const draw = () => {
+      frame += 1;
+      const center = size / 2;
+      const pxPerNm = (size / 2 - 20) / MAX_RANGE_NM;
+      ctx.fillStyle = "#0a1929";
+      ctx.fillRect(0, 0, size, size);
 
-    // Grid rings (cyan glow)
-    ctx.strokeStyle = "#00d4ff";
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.2;
-    for (let i = 1; i <= 4; i++) {
-      const r = (i * MAX_RANGE * PX_PER_NM) / 2;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = "#00d4ff";
-      ctx.font = "10px monospace";
-      ctx.fillText(`${i * 10}nm`, centerX + r + 2, centerY - 10);
-    }
-
-    // Crosshair
-    ctx.globalAlpha = 0.15;
-    ctx.strokeStyle = "#00d4ff";
-    ctx.beginPath();
-    ctx.moveTo(centerX, 10);
-    ctx.lineTo(centerX, GRID_SIZE - 10);
-    ctx.moveTo(10, centerY);
-    ctx.lineTo(GRID_SIZE - 10, centerY);
-    ctx.stroke();
-
-    // Cardinal directions
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = "#00d4ff";
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("N", centerX, 15);
-    ctx.fillText("S", centerX, GRID_SIZE - 5);
-    ctx.textAlign = "start";
-    ctx.fillText("E", GRID_SIZE - 15, centerY + 4);
-    ctx.textAlign = "end";
-    ctx.fillText("W", 15, centerY + 4);
-
-    // Airport center
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(centerX - 2, centerY - 8, 4, 16);
-    ctx.fillRect(centerX - 8, centerY - 2, 16, 4);
-
-    // Wind vector overlay
-    if (wind && wind.speed > 0) {
-      const windRad = (wind.direction * Math.PI) / 180;
-      const windVecX = Math.cos(windRad) * 40;
-      const windVecY = Math.sin(windRad) * 40;
-      ctx.strokeStyle = "#ffaa00";
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY - 60);
-      ctx.lineTo(centerX + windVecX, centerY - 60 + windVecY);
-      ctx.stroke();
-      // Arrowhead
-      const angle = Math.atan2(windVecY, windVecX);
-      ctx.beginPath();
-      ctx.moveTo(centerX + windVecX, centerY - 60 + windVecY);
-      ctx.lineTo(
-        centerX + windVecX - 8 * Math.cos(angle - Math.PI / 6),
-        centerY - 60 + windVecY - 8 * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.lineTo(
-        centerX + windVecX - 8 * Math.cos(angle + Math.PI / 6),
-        centerY - 60 + windVecY - 8 * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.fill();
-    }
-
-    // Aircraft
-    ctx.globalAlpha = 1;
-    aircraft.forEach((plane) => {
-      const x = centerX + (plane.x * PX_PER_NM) / MAX_RANGE;
-      const y = centerY - (plane.y * PX_PER_NM) / MAX_RANGE;
-
-      if (x < 0 || x > GRID_SIZE || y < 0 || y > GRID_SIZE) return;
-
-      // Trajectory
-      if (plane.trajectory && plane.trajectory.length > 1) {
-        ctx.strokeStyle =
-          plane.collisionWarning || plane.separationViolation ? "#ff4444" : "#00ff88";
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.3;
-        ctx.setLineDash([2, 2]);
+      ctx.strokeStyle = "rgba(0,212,255,0.25)";
+      for (let i = 1; i <= 5; i += 1) {
         ctx.beginPath();
-        plane.trajectory.forEach((pt, i) => {
-          const ptX = centerX + (pt.x * PX_PER_NM) / MAX_RANGE;
-          const ptY = centerY - (pt.y * PX_PER_NM) / MAX_RANGE;
-          if (i === 0) ctx.moveTo(ptX, ptY);
-          else ctx.lineTo(ptX, ptY);
-        });
+        ctx.arc(center, center, i * 10 * pxPerNm, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(center, 10);
+      ctx.lineTo(center, size - 10);
+      ctx.moveTo(10, center);
+      ctx.lineTo(size - 10, center);
+      ctx.stroke();
+
+      // Runway
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(toRadians(RUNWAY_HEADING));
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-6, -50, 12, 100);
+      ctx.restore();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 11px monospace";
+      ctx.fillText("28L", center - 30, center + 62);
+      ctx.fillText("10R", center + 10, center - 55);
+
+      // ILS cone
+      const finalPlanes = aircraft.some((plane) => plane.status === "final" || plane.status === "cleared_to_land");
+      if (finalPlanes) {
+        const thresholdX = center + Math.cos(toRadians(RUNWAY_HEADING)) * 48;
+        const thresholdY = center + Math.sin(toRadians(RUNWAY_HEADING)) * 48;
+        const coneLen = 15 * pxPerNm;
+        const left = toRadians(RUNWAY_HEADING + 180 - 3);
+        const right = toRadians(RUNWAY_HEADING + 180 + 3);
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = "rgba(0,255,255,0.7)";
+        ctx.beginPath();
+        ctx.moveTo(thresholdX, thresholdY);
+        ctx.lineTo(thresholdX + Math.cos(left) * coneLen, thresholdY + Math.sin(left) * coneLen);
+        ctx.moveTo(thresholdX, thresholdY);
+        ctx.lineTo(thresholdX + Math.cos(right) * coneLen, thresholdY + Math.sin(right) * coneLen);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
       }
 
-      // Collision pulse
-      if (plane.collisionWarning) {
-        ctx.strokeStyle = "#ff0000";
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.8;
-        const pulse = Math.sin(Date.now() / 150) * 8 + 12;
+      // Radar sweep + persistence trail
+      sweepRef.current = (sweepRef.current + 0.8) % 360;
+      trailRef.current = [...trailRef.current.slice(-18), sweepRef.current];
+      trailRef.current.forEach((angle, index) => {
+        const alpha = (index + 1) / (trailRef.current.length * 7);
+        ctx.strokeStyle = `rgba(0,255,136,${alpha})`;
+        ctx.lineWidth = index === trailRef.current.length - 1 ? 2 : 1;
         ctx.beginPath();
-        ctx.arc(x, y, pulse, 0, Math.PI * 2);
+        ctx.moveTo(center, center);
+        ctx.lineTo(
+          center + Math.cos(toRadians(angle)) * (size / 2 - 10),
+          center + Math.sin(toRadians(angle)) * (size / 2 - 10)
+        );
         ctx.stroke();
-        ctx.globalAlpha = 1;
+      });
+
+      // Violation pair lookup for pulsing rings
+      const violatingIds = new Set();
+      for (let i = 0; i < aircraft.length; i += 1) {
+        for (let j = i + 1; j < aircraft.length; j += 1) {
+          const a = aircraft[i];
+          const b = aircraft[j];
+          const closeLateral = lateralDistance(a, b) < 5;
+          const closeVertical = Math.abs(a.altitude - b.altitude) <= 1000;
+          if (closeLateral && closeVertical) {
+            violatingIds.add(a.id);
+            violatingIds.add(b.id);
+          }
+        }
       }
 
-      // Aircraft icon (colored jet)
-      const isSelected = selectedPlane?.id === plane.id;
-      const color = plane.collisionWarning
-        ? "#ff0000"
-        : plane.separationViolation
-          ? "#ffaa00"
-          : plane.mustLandASAP
-            ? "#ff00ff"
-            : isSelected
-              ? "#ffff00"
-              : "#00d4ff";
+      aircraft.forEach((plane) => {
+        const x = center + plane.x * pxPerNm;
+        const y = center - plane.y * pxPerNm;
+        if (x < 0 || x > size || y < 0 || y > size) return;
 
-      ctx.fillStyle = color;
-      ctx.font = isSelected ? "bold 10px monospace" : "9px monospace";
+        let color = "#ffffff";
+        if (plane.altitude < 10000) color = "#00ff88";
+        else if (plane.altitude < 20000) color = "#00ffff";
+        if (selectedPlane?.id === plane.id) color = "#ffee55";
 
-      // Draw tiny jet triangle
-      const hdgRad = (plane.actualHeading * Math.PI) / 180;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(hdgRad);
-      ctx.fillRect(-1.5, -3, 3, 6);
-      ctx.fillRect(-3, 0, 6, 1.5);
-      ctx.restore();
+        if (violatingIds.has(plane.id)) {
+          const pulse = 12 + Math.sin(frame / 10) * 4;
+          ctx.strokeStyle = "rgba(255,0,0,0.85)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y, pulse, 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
-      // Callsign + altitude
-      ctx.fillStyle = color;
-      ctx.textAlign = "left";
-      ctx.fillText(plane.callsign, x + 6, y - 4);
-      ctx.font = "8px monospace";
-      ctx.fillText(`FL${Math.round(plane.altitude / 100)}`, x + 6, y + 6);
+        // Aircraft icon (triangle + wing stubs)
+        const hdg = toRadians(plane.actualHeading || plane.heading || 0);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(hdg);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -7);
+        ctx.lineTo(4, 5);
+        ctx.lineTo(0, 3);
+        ctx.lineTo(-4, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-6, -1);
+        ctx.lineTo(6, -1);
+        ctx.stroke();
+        ctx.restore();
 
-      // Speed vector
-      ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.5;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      const speedVec = 5;
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(hdgRad) * speedVec, y + Math.sin(hdgRad) * speedVec);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-  }, [aircraft, wind, selectedPlane, weatherEffects]);
+        ctx.fillStyle = color;
+        ctx.font = "10px monospace";
+        ctx.fillText(plane.callsign, x + 8, y - 5);
+        ctx.font = "9px monospace";
+        ctx.fillText(`FL${Math.round(plane.altitude / 100)}`, x + 8, y + 7);
+      });
+
+      // Wind arrow
+      if (wind?.speed > 0) {
+        const wx = center + Math.cos(toRadians(wind.direction)) * 35;
+        const wy = center + Math.sin(toRadians(wind.direction)) * 35;
+        ctx.strokeStyle = "#ffaa00";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(center, 26);
+        ctx.lineTo(wx, 26 + (wy - center));
+        ctx.stroke();
+      }
+
+      rafId = requestAnimationFrame(draw);
+    };
+
+    rafId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafId);
+  }, [aircraft, selectedPlane, size, wind]);
 
   const handleCanvasClick = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    const center = size / 2;
+    const pxPerNm = (size / 2 - 20) / MAX_RANGE_NM;
 
-    const centerX = GRID_SIZE / 2;
-    const centerY = GRID_SIZE / 2;
-
+    let closest = null;
+    let minDist = 16;
     aircraft.forEach((plane) => {
-      const planeX = centerX + (plane.x * PX_PER_NM) / MAX_RANGE;
-      const planeY = centerY - (plane.y * PX_PER_NM) / MAX_RANGE;
-
-      const dist = Math.sqrt((x - planeX) ** 2 + (y - planeY) ** 2);
-      if (dist < 8) {
-        onSelectPlane(plane);
+      const planeX = center + plane.x * pxPerNm;
+      const planeY = center - plane.y * pxPerNm;
+      const dist = Math.hypot(x - planeX, y - planeY);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = plane;
       }
     });
+    if (closest) onSelectPlane(closest);
   };
 
   return (
-    <div className="atc-radar-container">
+    <div
+      ref={containerRef}
+      className="atc-radar-container"
+      style={{
+        position: "relative",
+        width: "100%",
+        minHeight: "320px",
+        border: "2px solid #00d4ff",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#0a1929",
+      }}
+    >
       <canvas
         ref={canvasRef}
-        width={GRID_SIZE}
-        height={GRID_SIZE}
+        width={size}
+        height={size}
         onClick={handleCanvasClick}
         className="atc-radar-canvas"
-        style={{ cursor: "crosshair" }}
+        style={{ width: "100%", height: "100%", display: "block", cursor: "crosshair" }}
       />
       {weatherEffects?.lowVis && (
-        <div className="radar-fog-overlay"></div>
+        <div
+          className="radar-fog-overlay"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(180,200,220,0.12)",
+            backdropFilter: "blur(2px)",
+            pointerEvents: "none",
+          }}
+        />
       )}
     </div>
   );
