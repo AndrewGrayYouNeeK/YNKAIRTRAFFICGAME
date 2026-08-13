@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 
 export default function ATCSupervisor({ session }) {
@@ -13,7 +13,7 @@ export default function ATCSupervisor({ session }) {
   useEffect(() => {
     // Initialize agent conversation
     const initConversation = async () => {
-      const conv = await base44.agents.createConversation({
+      const conv = await api.agents.createConversation({
         agent_name: "atc_supervisor",
         metadata: {
           name: `ATC Session ${session.id}`,
@@ -32,7 +32,7 @@ export default function ATCSupervisor({ session }) {
     if (!conversation) return;
 
     // Subscribe to conversation updates
-    const unsubscribe = base44.agents.subscribeToConversation(conversation.id, (data) => {
+    const unsubscribe = api.agents.subscribeToConversation(conversation.id, (data) => {
       setMessages(data.messages || []);
     });
 
@@ -44,7 +44,7 @@ export default function ATCSupervisor({ session }) {
 
     setLoading(true);
     try {
-      await base44.agents.addMessage(conversation, {
+      await api.agents.addMessage(conversation, {
         role: "user",
         content: input,
       });

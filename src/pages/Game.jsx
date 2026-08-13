@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,13 @@ export default function Game() {
 
   // Get current user
   useEffect(() => {
-    base44.auth.me().then(setCurrentUser).catch(() => setCurrentUser(null));
+    api.auth.me().then(setCurrentUser).catch(() => setCurrentUser(null));
   }, []);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["current-game-session"],
     queryFn: async () => {
-      const sessions = await base44.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
+      const sessions = await api.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
       return sessions[0] || null;
     },
     refetchInterval: 2000,
@@ -33,7 +33,7 @@ export default function Game() {
   useEffect(() => {
     if (!session) return;
     
-    const unsubscribe = base44.entities.GameSession.subscribe((event) => {
+    const unsubscribe = api.entities.GameSession.subscribe((event) => {
       if (event.id === session.id) {
         queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
       }
@@ -43,14 +43,14 @@ export default function Game() {
   }, [session?.id, queryClient]);
 
   const createGameMutation = useMutation({
-    mutationFn: (data) => base44.entities.GameSession.create(data),
+    mutationFn: (data) => api.entities.GameSession.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
     },
   });
 
   const updateGameMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.GameSession.update(id, data),
+    mutationFn: ({ id, data }) => api.entities.GameSession.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
     },
@@ -75,7 +75,7 @@ export default function Game() {
         onJoinGame={async (session) => {
           // Add player as participant
           if (currentUser) {
-            await base44.entities.GameSessionParticipant.create({
+            await api.entities.GameSessionParticipant.create({
               session_id: session.id,
               player_email: currentUser.email,
               player_name: currentUser.full_name,

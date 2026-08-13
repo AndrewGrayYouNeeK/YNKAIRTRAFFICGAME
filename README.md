@@ -1,39 +1,41 @@
-**Welcome to your Base44 project** 
+# Air Traffic Control Game
 
-**About**
+A real-time air traffic control and drone detection simulation built with React and Vite.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Features
 
-This project contains everything you need to run your app locally.
+- Live radar scanner with drone detection
+- Air traffic control simulation with voice commands
+- Watchlist, incidents, analytics, and detection history
+- Local-first data storage (no external backend required)
 
-**Edit the code in your local development environment**
+## Getting Started
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+1. Clone the repository
+2. Install dependencies:
 
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+```bash
+npm install
 ```
 
-Run the app: `npm run dev`
+3. Start the development server:
 
-**Publish your changes**
+```bash
+npm run dev
+```
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+4. Build for production:
 
-**Docs & Support**
+```bash
+npm run build
+```
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+## Tech Stack
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- React 18
+- Vite
+- TanStack Query
+- Tailwind CSS
+- Recharts / Leaflet
+
+Data is persisted in the browser via localStorage, so the app runs fully offline after the first load.

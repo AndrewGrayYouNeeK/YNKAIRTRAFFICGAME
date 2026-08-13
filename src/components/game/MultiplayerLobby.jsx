@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Users, MapPin, Shield, Play } from "lucide-react";
 export default function MultiplayerLobby({ onStartGame, onJoinGame }) {
   const { data: activeSessions = [] } = useQuery({
     queryKey: ["active-game-sessions"],
-    queryFn: () => base44.entities.GameSession.filter({ status: "active" }, "-created_date", 20),
+    queryFn: () => api.entities.GameSession.filter({ status: "active" }, "-created_date", 20),
     refetchInterval: 2000,
   });
 

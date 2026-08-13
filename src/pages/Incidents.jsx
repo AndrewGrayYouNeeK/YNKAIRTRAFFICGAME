@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -37,11 +37,11 @@ export default function Incidents() {
 
   const { data: incidents = [], isLoading } = useQuery({
     queryKey: ["incidents"],
-    queryFn: () => base44.entities.Incident.list("-created_date", 100),
+    queryFn: () => api.entities.Incident.list("-created_date", 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Incident.create(data),
+    mutationFn: (data) => api.entities.Incident.create(data),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       setShowAdd(false);
@@ -51,7 +51,7 @@ export default function Incidents() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Incident.update(id, data),
+    mutationFn: ({ id, data }) => api.entities.Incident.update(id, data),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       setSelected(updated);

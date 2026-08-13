@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, Circle, useMap } from "react-leaflet";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { generateDrone, updateDrone } from "../lib/droneSimulator";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,7 @@ export default function MapView() {
   // Fetch active game sessions to get real player locations
   const { data: gameSessions = [] } = useQuery({
     queryKey: ["active-game-sessions"],
-    queryFn: () => base44.entities.GameSession.filter({ status: "active" }, "-created_date", 10),
+    queryFn: () => api.entities.GameSession.filter({ status: "active" }, "-created_date", 10),
     refetchInterval: 5000,
   });
 
