@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +27,11 @@ export default function Watchlist() {
 
   const { data: watchlist = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
-    queryFn: () => base44.entities.Watchlist.list("-created_date", 100),
+    queryFn: () => api.entities.Watchlist.list("-created_date", 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Watchlist.create(data),
+    mutationFn: (data) => api.entities.Watchlist.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
       setNewEntry({ drone_id: "", model: "", reason: "", priority: "high", notes: "" });
@@ -40,7 +40,7 @@ export default function Watchlist() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Watchlist.delete(id),
+    mutationFn: (id) => api.entities.Watchlist.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },

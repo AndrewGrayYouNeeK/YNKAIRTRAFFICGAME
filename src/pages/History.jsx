@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ const threatBadgeStyles = {
 export default function History() {
   const { data: detections = [], isLoading } = useQuery({
     queryKey: ["drone-detections"],
-    queryFn: () => base44.entities.DroneDetection.list("-created_date", 50),
+    queryFn: () => api.entities.DroneDetection.list("-created_date", 50),
     initialData: [],
   });
 

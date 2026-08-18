@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Plane, Globe } from "lucide-react";
 import AirportSelector from "./AirportSelector";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +12,7 @@ export default function ATCSetup({ onSessionCreated }) {
   // Get total successful landings across all past sessions
   const { data: pastSessions = [] } = useQuery({
     queryKey: ["atc-past-sessions"],
-    queryFn: () => base44.entities.ATCSession.filter({ status: "completed" }),
+    queryFn: () => api.entities.ATCSession.filter({ status: "completed" }),
   });
 
   const totalLandings = pastSessions.reduce((sum, s) => sum + (s.successful_landings || 0), 0);
@@ -20,7 +20,7 @@ export default function ATCSetup({ onSessionCreated }) {
   const startGame = async () => {
     if (!selectedAirport) return;
     setLoading(true);
-    const session = await base44.entities.ATCSession.create({
+    const session = await api.entities.ATCSession.create({
       status: "active",
       difficulty: selectedAirport.difficulty,
       level: selectedAirport.level,

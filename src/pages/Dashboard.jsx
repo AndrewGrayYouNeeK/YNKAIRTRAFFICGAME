@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Radar } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import RadarDisplay from "../components/radar/RadarDisplay";
 import ThreatBanner from "../components/radar/ThreatBanner";
 import DroneCard from "../components/radar/DroneCard";
@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   // Save a drone detection to the database
   const saveDetection = useCallback(async (drone) => {
-    base44.entities.DroneDetection.create({
+    api.entities.DroneDetection.create({
       drone_id: drone.id,
       model: drone.model,
       brand: drone.brand,

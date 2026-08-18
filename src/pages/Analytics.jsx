@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -28,7 +28,7 @@ const categoryColors = {
 export default function Analytics() {
   const { data: detections = [], isLoading } = useQuery({
     queryKey: ["drone-detections-analytics"],
-    queryFn: () => base44.entities.DroneDetection.list("-created_date", 500),
+    queryFn: () => api.entities.DroneDetection.list("-created_date", 500),
   });
 
   // 24h detection timeline (by 2-hour buckets)

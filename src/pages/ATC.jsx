@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, LogOut } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ATCRadar from "../components/atc/ATCRadar";
 import VoiceInput from "../components/atc/VoiceInput";
@@ -26,7 +26,7 @@ export default function ATC() {
   // Fetch active session
   const { data: sessions } = useQuery({
     queryKey: ["atc-sessions"],
-    queryFn: () => base44.entities.ATCSession.filter({ status: "active" }),
+    queryFn: () => api.entities.ATCSession.filter({ status: "active" }),
   });
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function ATC() {
   // Fetch aircraft for session
   const { data: aircraft = [] } = useQuery({
     queryKey: ["aircraft", session?.id],
-    queryFn: () => (session ? base44.entities.Aircraft.filter({ session_id: session.id }) : []),
+    queryFn: () => (session ? api.entities.Aircraft.filter({ session_id: session.id }) : []),
     enabled: !!session,
     refetchInterval: 500,
   });
@@ -64,7 +64,7 @@ export default function ATC() {
 
   const handleEndSession = async () => {
     if (!session) return;
-    await base44.entities.ATCSession.update(session.id, { status: "completed" });
+    await api.entities.ATCSession.update(session.id, { status: "completed" });
     setSession(null);
     setAirport(null);
     queryClient.invalidateQueries({ queryKey: ["atc-sessions"] });

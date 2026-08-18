@@ -6,7 +6,7 @@ import { MapPin, Eye, Hammer, Lock, Zap, Users, Flame, Zap as ZapIcon } from "lu
 import RadarDisplay from "../radar/RadarDisplay";
 import MapTargeting from "./MapTargeting";
 import MysteryBox from "./MysteryBox";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
 import { playBackgroundMusic, stopBackgroundMusic, playSound } from "../../lib/gameConfig";
@@ -22,7 +22,7 @@ export default function StrategyMode({ session, onUpdate }) {
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
     queryKey: ["game-participants", session.id],
-    queryFn: () => base44.entities.GameSessionParticipant.filter({ session_id: session.id }),
+    queryFn: () => api.entities.GameSessionParticipant.filter({ session_id: session.id }),
     refetchInterval: 2000,
   });
 
