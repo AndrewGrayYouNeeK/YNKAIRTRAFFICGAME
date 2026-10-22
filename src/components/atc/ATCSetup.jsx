@@ -12,7 +12,7 @@ export default function ATCSetup({ onSessionCreated }) {
   // Get total successful landings across all past sessions
   const { data: pastSessions = [] } = useQuery({
     queryKey: ["atc-past-sessions"],
-    queryFn: () => api.entities.ATCSession.filter({ status: "completed" }),
+    queryFn: () => api.entities.ATCSession.list("-created_date", 200),
   });
 
   const totalLandings = pastSessions.reduce((sum, s) => sum + (s.successful_landings || 0), 0);
@@ -26,6 +26,12 @@ export default function ATCSetup({ onSessionCreated }) {
       level: selectedAirport.level,
       max_aircraft: selectedAirport.maxAircraft,
       airport_id: selectedAirport.id,
+      successful_landings: 0,
+      failed_landings: 0,
+      emergencies_handled: 0,
+      collisions: 0,
+      separationViolations: 0,
+      score: 0,
     });
     onSessionCreated({ ...session, airport: selectedAirport });
     setLoading(false);
@@ -55,6 +61,7 @@ export default function ATCSetup({ onSessionCreated }) {
               onClick={startGame}
               disabled={loading}
               size="lg"
+              data-testid="start-control"
               className="w-full font-mono text-sm gap-2 shadow-lg"
             >
               <Plane className="w-4 h-4" />

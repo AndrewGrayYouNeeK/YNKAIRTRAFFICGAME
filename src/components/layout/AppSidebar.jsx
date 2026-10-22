@@ -6,7 +6,7 @@ const navGroups = [
   {
     label: "MONITORING",
     items: [
-      { path: "/", icon: Radar, label: "Live Scanner", description: "Real-time radar feed" },
+      { path: "/dashboard", icon: Radar, label: "Live Scanner", description: "Real-time radar feed" },
       { path: "/map", icon: Map, label: "Map View", description: "Geographic tracking" },
     ],
   },
@@ -28,7 +28,7 @@ const navGroups = [
   {
     label: "GAMES",
     items: [
-      { path: "/atc", icon: Plane, label: "Air Traffic Control", description: "Voice-guided aircraft" },
+      { path: "/", icon: Plane, label: "Air Traffic Control", description: "Voice-guided aircraft" },
     ],
   },
 ];

@@ -28,6 +28,7 @@ export default function AirportSelector({ totalLandings = 0, onSelect }) {
         return (
           <motion.button
             key={airport.id}
+            data-testid={`airport-${airport.id}`}
             disabled={isLocked}
             onClick={() => !isLocked && onSelect(airport)}
             initial={{ opacity: 0, x: -20 }}

@@ -54,7 +54,12 @@ function extractDigitSequence(tokens, startIndex) {
   const digits = [];
   let i = startIndex;
   for (; i < tokens.length; i += 1) {
-    const digit = tokenToDigit(tokens[i]);
+    const token = tokens[i];
+    if (/^\d+$/.test(token)) {
+      digits.push(token);
+      continue;
+    }
+    const digit = tokenToDigit(token);
     if (digit === null) break;
     digits.push(digit);
   }
@@ -144,17 +149,28 @@ function parseAltitude(tokens) {
     if (digits) return Number.parseInt(digits, 10) * 100;
   }
 
-  for (let i = 0; i < tokens.length; i += 1) {
-    if (tokens[i] !== "thousand") continue;
-    const digits = extractDigitSequence(tokens, i - 1).value;
+  const thousandIndex = tokens.indexOf("thousand");
+  if (thousandIndex > 0) {
+    const digits = extractDigitSequence(tokens, thousandIndex - 1).value;
     if (digits) return Number.parseInt(digits, 10) * 1000;
   }
 
-  const digitRuns = tokens
-    .map((t) => tokenToDigit(t))
-    .filter((t) => t !== null)
-    .join("");
-  if (digitRuns.length >= 3) return Number.parseInt(digitRuns, 10);
+  const keywordAt = ["descend", "climb", "maintain", "altitude"]
+    .map((keyword) => tokens.indexOf(keyword))
+    .filter((index) => index >= 0);
+  const start = keywordAt.length ? Math.min(...keywordAt) + 1 : 0;
+
+  for (let i = start; i < tokens.length; i += 1) {
+    if (/^\d{3,5}$/.test(tokens[i])) {
+      const value = Number.parseInt(tokens[i], 10);
+      if (value >= 100 && value <= 45000) return value;
+    }
+  }
+
+  for (let i = start; i < tokens.length; i += 1) {
+    const digits = extractDigitSequence(tokens, i).value;
+    if (digits.length >= 3) return Number.parseInt(digits, 10);
+  }
   return null;
 }
 
@@ -170,10 +186,13 @@ function parseSpeed(tokens) {
 function parseRunway(tokens) {
   const runwayIndex = tokens.indexOf("runway");
   if (runwayIndex === -1) return null;
+  const raw = tokens[runwayIndex + 1] || "";
+  const compact = raw.toUpperCase().match(/^(\d{1,2})([LRC])$/);
+  if (compact) return `${compact[1].padStart(2, "0")}${compact[2]}`;
   const { value: digits, nextIndex } = extractDigitSequence(tokens, runwayIndex + 1);
   if (!digits) return null;
   const side = tokens[nextIndex];
-  const suffix = side === "left" ? "L" : side === "right" ? "R" : side === "center" ? "C" : "";
+  const suffix = side === "left" ? "L" : side === "right" ? "R" : side === "center" || side === "centre" ? "C" : "";
   return `${digits.padStart(2, "0")}${suffix}`;
 }
 
@@ -203,7 +222,7 @@ function buildReadback(command) {
     case "set_speed":
       return `${command.callsign}, reduce speed to ${command.value} knots, roger.`;
     case "cleared_to_land":
-      return `${command.callsign}, cleared to land runway ${command.runway || "28L"}, roger.`;
+      return `${command.callsign}, cleared to land${command.runway ? ` runway ${command.runway}` : ""}, roger.`;
     case "go_around":
       return `${command.callsign}, go around, roger.`;
     case "frequency_change":
@@ -229,15 +248,15 @@ export default function parseATCCommand(transcript, aircraft = [], selectedPlane
 
   let command = null;
 
-  if (tokens.includes("heading") && (tokens.includes("turn") || tokens.includes("left") || tokens.includes("right"))) {
+  if (tokens.includes("heading")) {
     const value = parseHeading(tokens);
     if (callsign && value !== null) command = { callsign, type: "set_heading", value };
   } else if (tokens.includes("descend") || tokens.includes("climb") || tokens.includes("maintain")) {
     const value = parseAltitude(tokens);
     if (callsign && value !== null) command = { callsign, type: "set_altitude", value };
   } else if (tokens.includes("cleared") && tokens.includes("land")) {
-    const runway = parseRunway(tokens) || "28L";
-    if (callsign) command = { callsign, type: "cleared_to_land", runway };
+    const runway = parseRunway(tokens);
+    if (callsign) command = { callsign, type: "cleared_to_land", ...(runway ? { runway } : {}) };
   } else if ((tokens.includes("speed") && tokens.includes("reduce")) || tokens.includes("knots")) {
     const value = parseSpeed(tokens);
     if (callsign && value !== null) command = { callsign, type: "set_speed", value };

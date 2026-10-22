@@ -15,6 +15,14 @@ export default function VoiceInput({
   const isTransmittingRef = useRef(false);
   const latestInterimRef = useRef("");
   const latestFinalRef = useRef("");
+  const aircraftRef = useRef(aircraft);
+  const selectedRef = useRef(selectedPlane);
+  const onCommandRef = useRef(onCommand);
+  const onTranscriptRef = useRef(onTranscript);
+  aircraftRef.current = aircraft;
+  selectedRef.current = selectedPlane;
+  onCommandRef.current = onCommand;
+  onTranscriptRef.current = onTranscript;
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [interim, setInterim] = useState("");
   const [lastLog, setLastLog] = useState(null);
@@ -45,9 +53,9 @@ export default function VoiceInput({
   const processTranscript = () => {
     const transcript = (latestFinalRef.current || latestInterimRef.current || "").trim();
     if (!transcript) return;
-    const parsed = parseATCCommand(transcript, aircraft, selectedPlane);
-    onTranscript?.(transcript);
-    if (parsed.command) onCommand?.(parsed.command, parsed);
+    const parsed = parseATCCommand(transcript, aircraftRef.current, selectedRef.current);
+    onTranscriptRef.current?.(transcript);
+    if (parsed.command) onCommandRef.current?.(parsed.command, parsed);
     setLastLog({ transcript, ...parsed });
     setInterim("");
     latestInterimRef.current = "";
@@ -93,13 +101,17 @@ export default function VoiceInput({
   };
 
   useEffect(() => {
+    const typing = (event) => {
+      const tag = event.target?.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable;
+    };
     const onKeyDown = (e) => {
-      if (e.code !== "Space" || e.repeat) return;
+      if (e.code !== "Space" || e.repeat || typing(e)) return;
       e.preventDefault();
       startTransmission();
     };
     const onKeyUp = (e) => {
-      if (e.code !== "Space") return;
+      if (e.code !== "Space" || typing(e)) return;
       e.preventDefault();
       stopTransmission();
     };
@@ -110,7 +122,7 @@ export default function VoiceInput({
       window.removeEventListener("keyup", onKeyUp);
       recognitionRef.current?.stop();
     };
-  }, [aircraft, selectedPlane, onCommand, onTranscript]);
+  }, []);
 
   if (!RecognitionClass) {
     return (
