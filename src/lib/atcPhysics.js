@@ -142,7 +142,8 @@ export function assessLanding(plane, designator, elevation = 0) {
 export function guideApproach(plane, designator, elevation = 0) {
   if (!plane?.clearedToLand || plane.status === "landed") return plane;
   const geo = approachState(plane, designator, elevation);
-  const intercepting = geo.along > -0.2 && geo.along < 32 && Math.abs(geo.cross) < 2.8;
+  const wide = Boolean(plane.tutorialFinal);
+  const intercepting = geo.along > -0.2 && geo.along < (wide ? 40 : 32) && Math.abs(geo.cross) < (wide ? 15 : 2.8);
   if (!intercepting) return plane;
 
   let desired = geo.heading;
@@ -172,6 +173,28 @@ export function selectActiveRunway(airport, wind) {
     }
   });
   return best;
+}
+
+export function placeOnExtendedCenterline(designator, distanceNm, elevation = 0) {
+  const distance = Math.max(0.3, Number(distanceNm) || 0.3);
+  const basis = runwayBasis(designator);
+  return {
+    x: basis.threshold.x - basis.alongX * distance,
+    y: basis.threshold.y - basis.alongY * distance,
+    heading: basis.heading,
+    altitude: elevation + distance * GLIDESLOPE_FT_PER_NM + 600,
+  };
+}
+
+export function keepOnLessonTrack(plane, designator, elevation = 0) {
+  if (!plane || plane.clearedToLand) return plane;
+  const geo = approachState(plane, designator, elevation);
+  const onLesson = geo.along >= 7 && geo.along <= 18 && Math.abs(geo.cross) <= 6;
+  if (onLesson) return plane;
+  const parked = placeOnExtendedCenterline(designator, 12, elevation);
+  plane.x = parked.x;
+  plane.y = parked.y;
+  return plane;
 }
 
 export function inboundSpawn(designator, distanceNm, elevation = 0) {
@@ -226,7 +249,8 @@ export function windVector(wind) {
 }
 
 export function updateAircraftPhysics(plane, wind, _allPlanes = [], deltaTime = 0.016) {
-  const simDt = clampDelta(deltaTime) * PHYSICS_TIME_SCALE;
+  const scale = Number.isFinite(plane?.timeScale) && plane.timeScale > 0 ? plane.timeScale : PHYSICS_TIME_SCALE;
+  const simDt = clampDelta(deltaTime) * scale;
   if (!plane || simDt === 0) return plane;
 
   const currentHeading = plane.actualHeading ?? plane.heading ?? 0;

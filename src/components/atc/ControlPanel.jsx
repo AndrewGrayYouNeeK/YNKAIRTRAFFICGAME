@@ -69,9 +69,10 @@ export default function ControlPanel({ selectedPlane, onCommand, activeRunway })
 
       {/* Commands */}
       <div className="commands-section">
-        <div className="command-group">
+        <div className="command-group" data-coach="heading">
           <label className="command-label">Heading (HDG)</label>
           <input
+            data-testid="heading-slider"
             type="range"
             min="0"
             max="360"
@@ -90,9 +91,10 @@ export default function ControlPanel({ selectedPlane, onCommand, activeRunway })
           <span className="slider-value">{heading}°</span>
         </div>
 
-        <div className="command-group">
+        <div className="command-group" data-coach="altitude">
           <label className="command-label">Altitude</label>
           <input
+            data-testid="altitude-slider"
             type="range"
             min="0"
             max="35000"
@@ -111,9 +113,10 @@ export default function ControlPanel({ selectedPlane, onCommand, activeRunway })
           <span className="slider-value">{altitude} ft</span>
         </div>
 
-        <div className="command-group">
+        <div className="command-group" data-coach="speed">
           <label className="command-label">Speed</label>
           <input
+            data-testid="speed-slider"
             type="range"
             min="100"
             max={selectedPlane.maxSpeed || 450}
@@ -135,7 +138,7 @@ export default function ControlPanel({ selectedPlane, onCommand, activeRunway })
         <button className="cmd-btn go-around" onClick={handleGoAround}>
           ⤴ GO AROUND
         </button>
-        <button className="cmd-btn clear-land" onClick={handleClearedToLand}>
+        <button type="button" className="cmd-btn clear-land" data-coach="land" data-testid="clear-to-land" onClick={handleClearedToLand}>
           ✅ CLEARED TO LAND
         </button>
       </div>

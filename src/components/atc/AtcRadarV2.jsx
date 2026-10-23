@@ -22,6 +22,7 @@ export default function AtcRadarV2({
   wind,
   selectedPlane,
   onSelectPlane,
+  onScopeClick,
   weatherEffects,
   airport,
   activeRunway,
@@ -276,7 +277,8 @@ export default function AtcRadarV2({
         closest = plane;
       }
     });
-    if (closest) onSelectPlane(closest.id);
+    onScopeClick?.();
+    if (closest) onSelectPlane?.(closest.id);
   };
 
   return (
@@ -284,6 +286,7 @@ export default function AtcRadarV2({
       ref={containerRef}
       className="atc-radar-container"
       data-testid="atc-scope"
+      data-coach="scope"
       style={{
         position: "relative",
         width: "100%",

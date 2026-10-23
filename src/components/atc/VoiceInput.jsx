@@ -10,6 +10,7 @@ export default function VoiceInput({
   onTranscript,
   aircraft = [],
   selectedPlane = null,
+  activeRunway = "",
 }) {
   const recognitionRef = useRef(null);
   const isTransmittingRef = useRef(false);
@@ -17,10 +18,12 @@ export default function VoiceInput({
   const latestFinalRef = useRef("");
   const aircraftRef = useRef(aircraft);
   const selectedRef = useRef(selectedPlane);
+  const runwayRef = useRef(activeRunway);
   const onCommandRef = useRef(onCommand);
   const onTranscriptRef = useRef(onTranscript);
   aircraftRef.current = aircraft;
   selectedRef.current = selectedPlane;
+  runwayRef.current = activeRunway;
   onCommandRef.current = onCommand;
   onTranscriptRef.current = onTranscript;
   const [isTransmitting, setIsTransmitting] = useState(false);
@@ -53,9 +56,13 @@ export default function VoiceInput({
   const processTranscript = () => {
     const transcript = (latestFinalRef.current || latestInterimRef.current || "").trim();
     if (!transcript) return;
-    const parsed = parseATCCommand(transcript, aircraftRef.current, selectedRef.current);
+    const selected = selectedRef.current;
+    const parsed = parseATCCommand(transcript, aircraftRef.current, selected, {
+      runway: selected?.runway || runwayRef.current,
+      callsign: selected?.callsign,
+    });
     onTranscriptRef.current?.(transcript);
-    if (parsed.command) onCommandRef.current?.(parsed.command, parsed);
+    onCommandRef.current?.(parsed.command, parsed);
     setLastLog({ transcript, ...parsed });
     setInterim("");
     latestInterimRef.current = "";
@@ -126,14 +133,14 @@ export default function VoiceInput({
 
   if (!RecognitionClass) {
     return (
-      <div className="bg-black/80 border border-amber-500/40 rounded-xl p-4">
-        <p className="font-mono text-xs text-amber-300">Voice not supported, use keyboard controls.</p>
+      <div className="bg-black/80 border border-amber-500/40 rounded-xl p-4" data-coach="voice" data-testid="voice-panel">
+        <p className="font-mono text-xs text-amber-300">Voice needs a microphone. Use the sliders or type a clearance. With a mic, hold PTT and you will see what was heard and how it was understood.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#061018] border border-green-500/40 rounded-xl p-4 space-y-3">
+    <div className="bg-[#061018] border border-green-500/40 rounded-xl p-4 space-y-3" data-coach="voice" data-testid="voice-panel">
       <div className="flex items-center justify-between">
         <h3 className="font-mono text-xs text-green-300">RADIO INPUT</h3>
         <div className={`font-mono text-[10px] ${isTransmitting ? "text-green-300" : "text-green-700"}`}>
@@ -184,10 +191,13 @@ export default function VoiceInput({
 
       {lastLog && (
         <div className="rounded-md border border-green-700/60 bg-black/80 p-2 space-y-1">
-          <p className="font-mono text-[11px] text-green-300">TX: {lastLog.transcript}</p>
+          <p className="font-mono text-[11px] text-green-300">Heard: {lastLog.transcript}</p>
           <p className="font-mono text-[11px] text-green-200">
-            CMD: {lastLog.command ? JSON.stringify(lastLog.command) : "UNRECOGNIZED"}
+            Understood: {lastLog.understood || "not recognized"}
           </p>
+          {lastLog.suggestion && (
+            <p className="font-mono text-[11px] text-amber-300">Try: {lastLog.suggestion}</p>
+          )}
           <p className={`font-mono text-[10px] ${lastLog.confidence < 0.6 ? "text-amber-300" : "text-green-300"}`}>
             {lastLog.confidence < 0.6 ? "SAY AGAIN" : "RECOGNIZED"} ({lastLog.confidence.toFixed(2)})
           </p>

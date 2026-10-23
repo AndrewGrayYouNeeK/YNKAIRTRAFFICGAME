@@ -5,7 +5,12 @@ import { Plane, Globe } from "lucide-react";
 import AirportSelector from "./AirportSelector";
 import { useQuery } from "@tanstack/react-query";
 
-export default function ATCSetup({ onSessionCreated }) {
+export default function ATCSetup({
+  onSessionCreated,
+  showTutorialOffer = false,
+  onStartTutorial,
+  onDismissTutorial,
+}) {
   const [selectedAirport, setSelectedAirport] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +54,9 @@ export default function ATCSetup({ onSessionCreated }) {
           <p className="text-sm text-muted-foreground font-mono">
             Choose your airport · Guide planes through live weather · Unlock new challenges
           </p>
+          <Button type="button" variant="outline" data-testid="replay-tutorial" onClick={onStartTutorial}>
+            Replay the guided mission
+          </Button>
         </div>
 
         {/* Airport selector */}
@@ -70,6 +78,22 @@ export default function ATCSetup({ onSessionCreated }) {
           </div>
         )}
       </div>
+      {showTutorialOffer && (
+        <div className="modal-overlay" data-testid="tutorial-offer" style={{ zIndex: 1300 }}>
+          <div className="modal">
+            <h2>First time on the scope?</h2>
+            <div className="briefing-content">
+              <p>A short guided mission puts one slow arrival on the screen and walks you through the scope, the sliders, typed clearances, and an optional radio call. You cannot fail it.</p>
+            </div>
+            <button type="button" className="btn-start" data-testid="tutorial-start" onClick={onStartTutorial}>
+              START THE GUIDED MISSION
+            </button>
+            <button type="button" className="btn-shift" data-testid="tutorial-skip" onClick={onDismissTutorial} style={{ marginTop: 10 }}>
+              SKIP FOR NOW
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

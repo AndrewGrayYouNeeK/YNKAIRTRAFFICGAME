@@ -5,9 +5,12 @@ import AtcRadarV2 from "../components/atc/AtcRadarV2";
 import ControlPanel from "../components/atc/ControlPanel";
 import AltitudeLadder from "../components/atc/AltitudeLadder";
 import ATCSetup from "../components/atc/ATCSetup";
+import HelpSheet from "../components/atc/HelpSheet";
+import TutorialCoach from "../components/atc/TutorialCoach";
 import VoiceInput from "../components/atc/VoiceInput";
 import parseATCCommand from "../lib/voiceCommandParser";
 import { api } from "../api/client";
+import { getAirport } from "../lib/airports";
 import {
   assessLanding,
   calculateTrajectory,
@@ -15,9 +18,20 @@ import {
   createInboundAircraft,
   findConflicts,
   guideApproach,
+  keepOnLessonTrack,
+  placeOnExtendedCenterline,
   selectActiveRunway,
   updateAircraftPhysics,
 } from "../lib/atcPhysics";
+import {
+  TUTORIAL_STEPS,
+  advanceTutorial,
+  createTutorialAircraft,
+  exampleFor,
+  markTutorialStatus,
+  readTutorialStatus,
+  shouldOfferTutorial,
+} from "../lib/tutorial";
 import { applyEmergencyEffects, generateEmergency } from "../lib/emergencySystem";
 import { sounds, speakText, vibrate } from "../lib/audioManager";
 import { addScoreToLeaderboard, calculateScore } from "../lib/scoringEngine";
@@ -73,7 +87,27 @@ const ATC_STYLES = `
 .modal { background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); border: 2px solid #00d4ff; border-radius: 8px; padding: 24px; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); text-align: center; }
 .briefing-content { text-align: left; font-size: 12px; margin: 16px 0; line-height: 1.6; flex: 1; overflow-y: auto; }
 .btn-start { margin-top: 16px; padding: 12px 24px; background: linear-gradient(135deg, #00d4ff, #00ff88); border: none; border-radius: 6px; color: #0a1929; font-family: monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
-@media (max-width: 1024px) { .atc-grid { grid-template-columns: 1fr; overflow: auto; } .radar-section { grid-template-columns: 1fr; min-height: 420px; } }
+.btn-help { padding: 8px 12px; background: rgba(255, 225, 74, 0.12); border: 1px solid #ffe14a; border-radius: 4px; color: #ffe14a; font-family: monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
+.tutorial-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.tutorial-ring { position: fixed; border: 2px solid #ffe14a; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); pointer-events: none; }
+.tutorial-ring-secondary { box-shadow: none; border-style: dashed; }
+.tutorial-card { position: fixed; left: 16px; bottom: 16px; width: min(420px, calc(100vw - 380px)); max-height: min(46vh, 420px); overflow: auto; pointer-events: auto; background: rgba(7, 20, 34, 0.96); border: 2px solid #ffe14a; border-radius: 12px; padding: 12px 14px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
+.tutorial-card h2 { margin: 0 0 6px; font-size: 16px; color: #ffe14a; }
+.tutorial-card p { margin: 0 0 6px; font-size: 12px; line-height: 1.35; color: #d5fff0; }
+.tutorial-kicker { font-size: 10px; letter-spacing: 0.08em; color: #00ff88; margin-bottom: 4px; }
+.tutorial-example { background: #030b11; border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 6px; padding: 8px; font-family: monospace; }
+.tutorial-sheet p { display: flex; gap: 8px; font-family: monospace; font-size: 11px; line-height: 1.25; margin: 0 0 2px; color: #b7ffe0; }
+.tutorial-sheet span { color: #ffaa00; min-width: 64px; }
+.tutorial-tips { margin: 0 0 8px; padding-left: 18px; font-size: 12px; line-height: 1.4; }
+.tutorial-feedback { background: rgba(0, 212, 255, 0.08); border-left: 3px solid #00d4ff; padding: 6px 8px; margin-bottom: 8px; }
+.tutorial-feedback p { margin: 0; font-size: 12px; }
+.tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tutorial-actions .btn-start, .tutorial-actions .btn-shift { margin-top: 0; }
+.help-overlay { z-index: 1200; }
+.help-modal { text-align: left; width: min(520px, 92vw); }
+.command-feedback { font-size: 11px; color: #d8fff0; line-height: 1.4; }
+.command-feedback .miss { color: #ffcc66; }
+@media (max-width: 1024px) { .atc-grid { grid-template-columns: 1fr; overflow: auto; } .radar-section { grid-template-columns: 1fr; min-height: 420px; } .tutorial-card { width: min(440px, calc(100vw - 24px)); } }
 `;
 
 if (typeof document !== "undefined" && !document.getElementById("atc-v2-styles")) {
@@ -139,6 +173,13 @@ export default function ATCv2() {
   const [activeRunway, setActiveRunway] = useState("");
   const [endReason, setEndReason] = useState("");
   const [commandText, setCommandText] = useState("");
+  const [commandFeedback, setCommandFeedback] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [tutorialIndex, setTutorialIndex] = useState(-1);
+  const [tutorialComplete, setTutorialComplete] = useState(false);
+  const [tutorialOffer, setTutorialOffer] = useState(() => (
+    shouldOfferTutorial(readTutorialStatus(typeof localStorage === "undefined" ? null : localStorage))
+  ));
 
   const gameStateRef = useRef(gameState);
   const aircraftRef = useRef([]);
@@ -155,6 +196,9 @@ export default function ATCv2() {
   const aircraftCountRef = useRef(0);
   const logIdRef = useRef(0);
   const queryClientRef = useRef(queryClient);
+  const tutorialIndexRef = useRef(-1);
+  const landedPendingRef = useRef(false);
+  const scopeClickConsumedRef = useRef(false);
 
   gameStateRef.current = gameState;
   windRef.current = wind;
@@ -172,6 +216,27 @@ export default function ATCv2() {
 
   const logRef = useRef(addRadioLog);
   logRef.current = addRadioLog;
+
+  const advanceTutorialEvent = (event) => {
+    if (tutorialIndexRef.current < 0) return;
+    const before = tutorialIndexRef.current;
+    const result = advanceTutorial(before, event, landedPendingRef.current);
+    landedPendingRef.current = result.landedPending;
+    if (result.index === before) return;
+    tutorialIndexRef.current = result.index;
+    setTutorialIndex(result.index);
+    if (before === 0 && result.index === 1) {
+      setSelectedId(null);
+      selectedIdRef.current = null;
+    }
+    if (result.finished) {
+      setTutorialComplete(true);
+      markTutorialStatus(typeof localStorage === "undefined" ? null : localStorage, "done");
+      setTutorialOffer(false);
+    }
+  };
+  const advanceRef = useRef(advanceTutorialEvent);
+  advanceRef.current = advanceTutorialEvent;
 
   const publishSession = useCallback((patch) => {
     const current = sessionRef.current;
@@ -212,8 +277,14 @@ export default function ATCv2() {
       const dt = clampDelta(rawDt || 0.016);
       const field = airportRef.current;
       const windNow = windRef.current;
-      const runway = selectActiveRunway(field, windNow);
-      if (runway && runway !== activeRunwayRef.current) {
+      const lesson = tutorialIndexRef.current >= 0;
+      const simWind = lesson
+        ? { direction: windNow.direction, speed: Math.min(windNow.speed || 0, 6) }
+        : windNow;
+      const runway = lesson
+        ? (activeRunwayRef.current || field?.runways?.[0])
+        : selectActiveRunway(field, windNow);
+      if (!lesson && runway && runway !== activeRunwayRef.current) {
         activeRunwayRef.current = runway;
         setActiveRunway(runway);
       }
@@ -224,15 +295,26 @@ export default function ATCv2() {
 
       planes.forEach((plane) => {
         const assigned = plane.runway || runway;
+        if (lesson && !plane.clearedToLand) keepOnLessonTrack(plane, assigned, field?.elevation || 0);
         if (plane.clearedToLand) guideApproach(plane, assigned, field?.elevation || 0);
-        updateAircraftPhysics(plane, windNow, planes, dt);
-        plane.trajectory = calculateTrajectory(plane, windNow);
+        updateAircraftPhysics(plane, simWind, planes, dt);
+        plane.trajectory = calculateTrajectory(plane, simWind);
         if (!plane.clearedToLand) return;
         const result = assessLanding(plane, assigned, field?.elevation || 0);
         if (result.landed && !landedIds.has(plane.id)) {
           landedIds.add(plane.id);
           plane.status = "landed";
           landedNow.push(plane);
+        } else if (result.missed && lesson) {
+          const parked = placeOnExtendedCenterline(assigned, 6, field?.elevation || 0);
+          plane.x = parked.x;
+          plane.y = parked.y;
+          plane.heading = parked.heading;
+          plane.actualHeading = parked.heading;
+          plane.desiredHeading = parked.heading;
+          plane.clearedToLand = true;
+          plane.tutorialFinal = true;
+          plane.timeScale = 24;
         } else if (result.missed) {
           plane.clearedToLand = false;
           plane.status = "approach";
@@ -273,7 +355,7 @@ export default function ATCv2() {
 
       spawnTimer += rawDt;
       const maxAircraft = sessionRef.current?.max_aircraft || field?.maxAircraft || 4;
-      if (spawnTimer > 26 && planes.length < maxAircraft) {
+      if (!lesson && spawnTimer > 26 && planes.length < maxAircraft) {
         spawnTimer = 0;
         const nextIndex = aircraftCountRef.current;
         aircraftCountRef.current += 1;
@@ -284,7 +366,7 @@ export default function ATCv2() {
       }
 
       emergencyTimer += rawDt;
-      if (emergencyTimer > 45 && !emergencyRef.current && planes.length > 0) {
+      if (!lesson && emergencyTimer > 45 && !emergencyRef.current && planes.length > 0) {
         emergencyTimer = 0;
         const nextEmergency = generateEmergency(planes.length);
         const target = planes.find((plane) => !plane.emergency);
@@ -308,6 +390,7 @@ export default function ATCv2() {
         sounds.landed();
         logRef.current("ATC", `${plane.callsign} landed.`);
         scoreSession();
+        if (tutorialIndexRef.current >= 0) advanceRef.current({ type: "landed" });
       });
       missedNow.forEach((plane) => {
         statsRef.current.failed_landings += 1;
@@ -318,7 +401,7 @@ export default function ATCv2() {
         publishSession({ ...stats, score: calculateScore(stats) });
       });
 
-      if (collisions.length > 0) {
+      if (!lesson && collisions.length > 0) {
         statsRef.current.collisions += collisions.length;
         sounds.collision();
         endedRef.current = true;
@@ -328,7 +411,7 @@ export default function ATCv2() {
         scoreSession("completed");
         return;
       }
-      if (separationRef.current >= 3) {
+      if (!lesson && separationRef.current >= 3) {
         endedRef.current = true;
         setEndReason("Three separation losses");
         gameStateRef.current = GAME_STATE.GAMEOVER;
@@ -354,9 +437,11 @@ export default function ATCv2() {
     windRef.current = initialWind;
     setWind(initialWind);
     setWeatherEffects(initial);
-    const runway = selectActiveRunway(airport, initialWind);
-    activeRunwayRef.current = runway;
-    setActiveRunway(runway);
+    if (tutorialIndexRef.current < 0) {
+      const runway = selectActiveRunway(airport, initialWind);
+      activeRunwayRef.current = runway;
+      setActiveRunway(runway);
+    }
     let cancelled = false;
     fetchAirportWeather(airport.lat, airport.lng)
       .then((wx) => {
@@ -366,9 +451,11 @@ export default function ATCv2() {
         windRef.current = liveWind;
         setWind(liveWind);
         setWeatherEffects(effects);
-        const liveRunway = selectActiveRunway(airport, liveWind);
-        activeRunwayRef.current = liveRunway;
-        setActiveRunway(liveRunway);
+        if (tutorialIndexRef.current < 0) {
+          const liveRunway = selectActiveRunway(airport, liveWind);
+          activeRunwayRef.current = liveRunway;
+          setActiveRunway(liveRunway);
+        }
       })
       .catch(() => {});
     return () => {
@@ -392,21 +479,23 @@ export default function ATCv2() {
     gameStateRef.current = GAME_STATE.BRIEFING;
   };
 
-  const startGame = () => {
-    const field = airportRef.current;
-    const runway = selectActiveRunway(field, windRef.current) || field?.runways?.[0];
+  const bootAircraft = (plane, runway, { tutorial = false, selectFirst = false } = {}) => {
     activeRunwayRef.current = runway;
     setActiveRunway(runway);
-    const first = createInboundAircraft(0, field, runway, 24);
     aircraftCountRef.current = 1;
-    aircraftRef.current = [first];
+    aircraftRef.current = [plane];
     activePairsRef.current = new Set();
     separationRef.current = 0;
     emergencyRef.current = null;
     endedRef.current = false;
+    landedPendingRef.current = false;
     statsRef.current = { ...EMPTY_STATS };
-    setAircraft([first]);
-    setSelectedId(first.id);
+    tutorialIndexRef.current = tutorial ? 0 : -1;
+    setTutorialIndex(tutorial ? 0 : -1);
+    setTutorialComplete(false);
+    setAircraft([plane]);
+    setSelectedId(selectFirst ? plane.id : null);
+    selectedIdRef.current = selectFirst ? plane.id : null;
     setTime(0);
     setScore(0);
     setLandings(0);
@@ -414,18 +503,88 @@ export default function ATCv2() {
     setEmergency(null);
     setEndReason("");
     setRadioLog([]);
+    setCommandFeedback(null);
+    setHelpOpen(false);
     gameStateRef.current = GAME_STATE.ACTIVE;
     setGameState(GAME_STATE.ACTIVE);
+  };
+
+  const startGame = () => {
+    const field = airportRef.current;
+    const runway = selectActiveRunway(field, windRef.current) || field?.runways?.[0];
+    const first = createInboundAircraft(0, field, runway, 24);
+    bootAircraft(first, runway, { selectFirst: true });
     addRadioLog("ATC", `${first.callsign} is inbound runway ${runway}.`);
   };
 
+  const startTutorial = async () => {
+    const field = getAirport("KLAX");
+    const runway = field.runways[0];
+    const created = await api.entities.ATCSession.create({
+      status: "active",
+      difficulty: field.difficulty,
+      level: field.level,
+      max_aircraft: 1,
+      airport_id: field.id,
+      successful_landings: 0,
+      failed_landings: 0,
+      emergencies_handled: 0,
+      collisions: 0,
+      separationViolations: 0,
+      score: 0,
+      tutorial: true,
+    });
+    sessionRef.current = { ...created, airport: field };
+    airportRef.current = field;
+    setSession(sessionRef.current);
+    setAirport(field);
+    setTutorialOffer(false);
+    markTutorialStatus(typeof localStorage === "undefined" ? null : localStorage, "started");
+    const plane = createTutorialAircraft(field, runway);
+    bootAircraft(plane, runway, { tutorial: true });
+    addRadioLog("ATC", `${plane.callsign} is your lesson arrival, runway ${runway}.`);
+  };
+
+  const dismissTutorialOffer = () => {
+    markTutorialStatus(typeof localStorage === "undefined" ? null : localStorage, "skipped");
+    setTutorialOffer(false);
+  };
+
   const finishAndLeave = () => {
-    if (gameStateRef.current === GAME_STATE.ACTIVE || gameStateRef.current === GAME_STATE.PAUSED) {
+    const lessonExit = tutorialIndexRef.current >= 0 && statsRef.current.successful_landings === 0;
+    if (lessonExit) {
+      publishSession({ status: "completed", score: 0 });
+    } else if (gameStateRef.current === GAME_STATE.ACTIVE || gameStateRef.current === GAME_STATE.PAUSED) {
       scoreSession("completed");
     }
     endedRef.current = true;
+    tutorialIndexRef.current = -1;
+    setTutorialIndex(-1);
+    setTutorialComplete(false);
     gameStateRef.current = GAME_STATE.SETUP;
     setGameState(GAME_STATE.SETUP);
+  };
+
+  const exitTutorial = () => {
+    if (!tutorialComplete) {
+      markTutorialStatus(typeof localStorage === "undefined" ? null : localStorage, "skipped");
+    }
+    finishAndLeave();
+  };
+
+  const continueFreeFlight = () => {
+    const field = airportRef.current;
+    const runway = activeRunwayRef.current || field?.runways?.[0];
+    tutorialIndexRef.current = -1;
+    setTutorialIndex(-1);
+    setTutorialComplete(false);
+    const arrival = createInboundAircraft(aircraftCountRef.current, field, runway, 24);
+    aircraftCountRef.current += 1;
+    aircraftRef.current = [arrival];
+    setAircraft([arrival]);
+    setSelectedId(arrival.id);
+    selectedIdRef.current = arrival.id;
+    addRadioLog("ATC", `${arrival.callsign} is inbound runway ${runway}. Free flight.`);
   };
 
   const applyToAircraft = (targetId, recipe) => {
@@ -462,8 +621,8 @@ export default function ATCv2() {
         applyToAircraft(target.id, (plane) => ({
           ...plane,
           desiredHeading: cmd.value,
-          clearedToLand: false,
-          status: plane.status === "final" ? "inbound" : plane.status,
+          clearedToLand: plane.tutorialFinal ? plane.clearedToLand : false,
+          status: plane.tutorialFinal ? plane.status : (plane.status === "final" ? "inbound" : plane.status),
         }));
         sounds.headingLock();
         addRadioLog("ATC", `${target.callsign}, heading ${cmd.value}.`);
@@ -479,12 +638,21 @@ export default function ATCv2() {
         addRadioLog("ATC", `${target.callsign}, go around.`);
         break;
       case "cleared_to_land":
-        applyToAircraft(target.id, (plane) => ({
-          ...plane,
-          status: "final",
-          clearedToLand: true,
-          runway,
-        }));
+        applyToAircraft(target.id, (plane) => {
+          const next = { ...plane, status: "final", clearedToLand: true, runway };
+          if (tutorialIndexRef.current >= 0) {
+            const parked = placeOnExtendedCenterline(runway, 8, airportRef.current?.elevation || 0);
+            next.x = parked.x;
+            next.y = parked.y;
+            next.heading = parked.heading;
+            next.actualHeading = parked.heading;
+            next.desiredHeading = parked.heading;
+            next.timeScale = 24;
+            next.tutorialFinal = true;
+            next.desiredSpeed = Math.min(next.desiredSpeed || 150, 160);
+          }
+          return next;
+        });
         speakText(`${target.callsign}, cleared to land runway ${runway}.`);
         addRadioLog("ATC", `${target.callsign}, cleared to land runway ${runway}.`);
         break;
@@ -503,13 +671,16 @@ export default function ATCv2() {
         break;
       }
     }
+    advanceTutorialEvent({ type: "command", command: cmd });
   };
 
   const handleVoiceCommand = (cmd, parsedResult) => {
+    if (parsedResult) setCommandFeedback(parsedResult);
     if (!cmd) return;
     addRadioLog("VOICE", `${cmd.callsign || "UNK"} ${cmd.type}`);
     handleCommand(cmd);
     if (parsedResult?.readback) addRadioLog("READBACK", parsedResult.readback);
+    advanceTutorialEvent({ type: "voice-command" });
   };
 
   const submitTypedCommand = (event) => {
@@ -517,7 +688,13 @@ export default function ATCv2() {
     const text = commandText.trim();
     if (!text) return;
     const selected = aircraftRef.current.find((plane) => plane.id === selectedIdRef.current) || null;
-    const parsed = parseATCCommand(text, aircraftRef.current, selected);
+    const lessonStep = TUTORIAL_STEPS[tutorialIndexRef.current];
+    const parsed = parseATCCommand(text, aircraftRef.current, selected, {
+      runway: selected?.runway || activeRunwayRef.current,
+      callsign: selected?.callsign,
+      example: exampleFor(lessonStep, { callsign: selected?.callsign, runway: selected?.runway || activeRunwayRef.current }),
+    });
+    setCommandFeedback(parsed);
     addRadioLog("PILOT", text);
     if (parsed.command) {
       handleCommand(parsed.command);
@@ -572,7 +749,14 @@ export default function ATCv2() {
   }));
 
   if (gameState === GAME_STATE.SETUP) {
-    return <ATCSetup onSessionCreated={handleSessionCreated} />;
+    return (
+      <ATCSetup
+        onSessionCreated={handleSessionCreated}
+        showTutorialOffer={tutorialOffer}
+        onStartTutorial={startTutorial}
+        onDismissTutorial={dismissTutorialOffer}
+      />
+    );
   }
 
   return (
@@ -583,6 +767,7 @@ export default function ATCv2() {
         data-landings={landings}
         data-state={gameState}
         data-active-runway={activeRunway}
+        data-tutorial-step={tutorialComplete ? "complete" : (TUTORIAL_STEPS[tutorialIndex]?.id || "off")}
         data-aircraft={JSON.stringify(telemetry)}
         hidden
       />
@@ -602,6 +787,7 @@ export default function ATCv2() {
           <div className="stat"><span className="label">SEP LOSS</span><span className="value">{separationCount}/3</span></div>
         </div>
         <div className="header-right">
+          <button type="button" className="btn-help" data-testid="help-button" onClick={() => setHelpOpen(true)}>HELP</button>
           <button type="button" className="btn-shift" onClick={finishAndLeave}>AIRPORTS</button>
           <button type="button" className="btn-pause" onClick={togglePause}>
             {gameState === GAME_STATE.PAUSED ? "RESUME" : "PAUSE"}
@@ -615,7 +801,22 @@ export default function ATCv2() {
             aircraft={aircraft}
             wind={wind}
             selectedPlane={selected}
-            onSelectPlane={setSelectedId}
+            onSelectPlane={(id) => {
+              if (scopeClickConsumedRef.current) {
+                scopeClickConsumedRef.current = false;
+                setSelectedId(null);
+                selectedIdRef.current = null;
+                return;
+              }
+              setSelectedId(id);
+              selectedIdRef.current = id;
+              advanceTutorialEvent({ type: "select" });
+            }}
+            onScopeClick={() => {
+              const before = tutorialIndexRef.current;
+              advanceTutorialEvent({ type: "scope-click" });
+              scopeClickConsumedRef.current = before === 0 && tutorialIndexRef.current !== before;
+            }}
             weatherEffects={weatherEffects}
             airport={airport}
             activeRunway={activeRunway}
@@ -631,7 +832,7 @@ export default function ATCv2() {
             </motion.div>
           )}
 
-          <form className="command-box" data-testid="command-form" onSubmit={submitTypedCommand}>
+          <form className="command-box" data-testid="command-form" data-coach="command" onSubmit={submitTypedCommand}>
             <label htmlFor="atc-command">TYPED CLEARANCE</label>
             {weatherEffects?.metar && <div className="metar-line">{weatherEffects.metar}</div>}
             <div className="command-row">
@@ -640,17 +841,25 @@ export default function ATCv2() {
                 data-testid="command-input"
                 value={commandText}
                 onChange={(event) => setCommandText(event.target.value)}
-                placeholder="UAL1230 cleared to land runway 24L"
+                placeholder="UAL123 heading 250"
                 autoComplete="off"
               />
               <button type="submit">SEND</button>
             </div>
+            {commandFeedback && (
+              <div className="command-feedback" data-testid="command-feedback">
+                <div>Heard: {commandFeedback.heard || "—"}</div>
+                <div>Understood: {commandFeedback.understood || "not recognized"}</div>
+                {commandFeedback.suggestion && <div className="miss">Try: {commandFeedback.suggestion}</div>}
+              </div>
+            )}
           </form>
 
           <VoiceInput
             onCommand={handleVoiceCommand}
             aircraft={aircraft}
             selectedPlane={selected}
+            activeRunway={activeRunway}
           />
 
           <ControlPanel selectedPlane={selected} onCommand={handleCommand} activeRunway={activeRunway} />
@@ -670,6 +879,31 @@ export default function ATCv2() {
           </div>
         </div>
       </div>
+
+      {(tutorialIndex >= 0 || tutorialComplete) && (
+        <TutorialCoach
+          stepIndex={tutorialIndex}
+          complete={tutorialComplete}
+          example={exampleFor(TUTORIAL_STEPS[tutorialIndex], {
+            callsign: aircraft.find((plane) => plane.tutorialLesson)?.callsign || selected?.callsign || aircraft[0]?.callsign,
+            runway: aircraft.find((plane) => plane.tutorialLesson)?.runway || selected?.runway || activeRunway,
+          })}
+          feedback={commandFeedback}
+          onSkipVoice={() => advanceTutorialEvent({ type: "voice-skip" })}
+          onExit={exitTutorial}
+          onFinish={finishAndLeave}
+          onPlayFree={continueFreeFlight}
+        />
+      )}
+
+      <HelpSheet
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onReplay={() => {
+          setHelpOpen(false);
+          startTutorial();
+        }}
+      />
 
       {gameState === GAME_STATE.BRIEFING && (
         <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
