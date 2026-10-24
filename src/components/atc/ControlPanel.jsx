@@ -1,42 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
-export default function ControlPanel({ selectedPlane, onCommand }) {
+export default function ControlPanel({ selectedPlane, onCommand, activeRunway }) {
   const [speed, setSpeed] = useState(selectedPlane?.desiredSpeed || 250);
   const [altitude, setAltitude] = useState(selectedPlane?.desiredAltitude || 5000);
   const [heading, setHeading] = useState(selectedPlane?.desiredHeading || 0);
+  const draggingRef = useRef(false);
+  const lastCommitRef = useRef({});
 
   useEffect(() => {
-    if (!selectedPlane) return;
+    if (!selectedPlane || draggingRef.current) return;
     setSpeed(Math.round(selectedPlane.desiredSpeed || selectedPlane.speed || 250));
     setAltitude(Math.round(selectedPlane.desiredAltitude || selectedPlane.altitude || 5000));
     setHeading(Math.round(selectedPlane.desiredHeading || selectedPlane.actualHeading || 0));
   }, [selectedPlane]);
 
-  const handleSpeedChange = (e) => {
-    const val = parseInt(e.target.value);
-    setSpeed(val);
-    onCommand({ type: "set_speed", value: val });
-  };
-
-  const handleAltitudeChange = (e) => {
-    const val = parseInt(e.target.value);
-    setAltitude(val);
-    onCommand({ type: "set_altitude", value: val });
+  const commit = (type, raw) => {
+    const value = Number.parseInt(raw, 10);
+    if (!Number.isFinite(value)) return;
+    if (lastCommitRef.current[type] === value && lastCommitRef.current.planeId === selectedPlane?.id) return;
+    lastCommitRef.current = { ...lastCommitRef.current, [type]: value, planeId: selectedPlane?.id };
+    onCommand({ type, value });
   };
 
   const handleGoAround = () => {
     onCommand({ type: "go_around" });
   };
 
-  const handleHeadingChange = (e) => {
-    const val = parseInt(e.target.value, 10);
-    setHeading(val);
-    onCommand({ type: "set_heading", value: val });
-  };
-
   const handleClearedToLand = () => {
-    onCommand({ type: "cleared_to_land" });
+    onCommand({ type: "cleared_to_land", runway: selectedPlane?.runway || activeRunway });
   };
 
   if (!selectedPlane) {
@@ -77,43 +69,67 @@ export default function ControlPanel({ selectedPlane, onCommand }) {
 
       {/* Commands */}
       <div className="commands-section">
-        <div className="command-group">
+        <div className="command-group" data-coach="heading">
           <label className="command-label">Heading (HDG)</label>
           <input
+            data-testid="heading-slider"
             type="range"
             min="0"
             max="360"
             step="5"
             value={heading}
-            onChange={handleHeadingChange}
+            onFocus={() => { draggingRef.current = true; }}
+            onChange={(e) => setHeading(parseInt(e.target.value, 10))}
+            onPointerUp={(e) => commit("set_heading", e.target.value)}
+            onKeyUp={(e) => commit("set_heading", e.target.value)}
+            onBlur={(e) => {
+              draggingRef.current = false;
+              commit("set_heading", e.target.value);
+            }}
             className="slider"
           />
           <span className="slider-value">{heading}°</span>
         </div>
 
-        <div className="command-group">
+        <div className="command-group" data-coach="altitude">
           <label className="command-label">Altitude</label>
           <input
+            data-testid="altitude-slider"
             type="range"
-            min="1000"
+            min="0"
             max="35000"
             step="500"
             value={altitude}
-            onChange={handleAltitudeChange}
+            onFocus={() => { draggingRef.current = true; }}
+            onChange={(e) => setAltitude(parseInt(e.target.value, 10))}
+            onPointerUp={(e) => commit("set_altitude", e.target.value)}
+            onKeyUp={(e) => commit("set_altitude", e.target.value)}
+            onBlur={(e) => {
+              draggingRef.current = false;
+              commit("set_altitude", e.target.value);
+            }}
             className="slider"
           />
           <span className="slider-value">{altitude} ft</span>
         </div>
 
-        <div className="command-group">
+        <div className="command-group" data-coach="speed">
           <label className="command-label">Speed</label>
           <input
+            data-testid="speed-slider"
             type="range"
             min="100"
             max={selectedPlane.maxSpeed || 450}
             step="10"
             value={speed}
-            onChange={handleSpeedChange}
+            onFocus={() => { draggingRef.current = true; }}
+            onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+            onPointerUp={(e) => commit("set_speed", e.target.value)}
+            onKeyUp={(e) => commit("set_speed", e.target.value)}
+            onBlur={(e) => {
+              draggingRef.current = false;
+              commit("set_speed", e.target.value);
+            }}
             className="slider"
           />
           <span className="slider-value">{speed} kt</span>
@@ -122,7 +138,7 @@ export default function ControlPanel({ selectedPlane, onCommand }) {
         <button className="cmd-btn go-around" onClick={handleGoAround}>
           ⤴ GO AROUND
         </button>
-        <button className="cmd-btn clear-land" onClick={handleClearedToLand}>
+        <button type="button" className="cmd-btn clear-land" data-coach="land" data-testid="clear-to-land" onClick={handleClearedToLand}>
           ✅ CLEARED TO LAND
         </button>
       </div>
