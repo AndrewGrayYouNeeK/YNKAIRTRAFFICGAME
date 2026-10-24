@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import AtcRadarV2 from "../components/atc/AtcRadarV2";
-import ControlPanel from "../components/atc/ControlPanel";
+import CommandPad from "../components/atc/CommandPad";
 import AltitudeLadder from "../components/atc/AltitudeLadder";
+import { altitudeCommand, headingCommand, speedCommand } from "../lib/commandPad";
 import ATCSetup from "../components/atc/ATCSetup";
 import HelpSheet from "../components/atc/HelpSheet";
 import TutorialCoach from "../components/atc/TutorialCoach";
-import { MicButton, SpeechProvider, SpeechStatus } from "../components/atc/VoiceInput";
+import { SpeechProvider } from "../components/atc/VoiceInput";
 import parseATCCommand from "../lib/voiceCommandParser";
 import { api } from "../api/client";
 import { getAirport } from "../lib/airports";
@@ -53,94 +54,106 @@ const EMPTY_STATS = {
 };
 
 const ATC_STYLES = `
-.atc-v2-container { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); display: flex; flex-direction: column; overflow: hidden; font-family: monospace; color: #00d4ff; }
-.atc-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 2px solid rgba(0, 212, 255, 0.2); background: rgba(10, 25, 41, 0.92); flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; overflow-x: auto; max-height: 52px; }
-.header-left,.header-right { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
-.airport-name { font-size: 18px; font-weight: bold; color: #00ff88; margin: 0; white-space: nowrap; }
-.wind-indicator { display: flex; flex-direction: column; font-size: 10px; white-space: nowrap; }
-.wind-indicator .value { color: #ffaa00; font-weight: bold; }
+.atc-v2-container { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: radial-gradient(circle at 50% 0%, #10281c, #050a08 62%); display: flex; flex-direction: column; overflow: hidden; font-family: ui-monospace, monospace; color: #d7ffe8; }
+.atc-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid rgba(120, 255, 170, 0.25); background: rgba(4, 12, 8, 0.94); flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; overflow: hidden; max-height: 48px; }
+.header-left,.header-right { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+.airport-name { font-size: 16px; font-weight: bold; color: #b6ff8a; margin: 0; white-space: nowrap; letter-spacing: 0.06em; }
+.wind-indicator { display: flex; flex-direction: column; font-size: 10px; white-space: nowrap; color: #9dccb0; }
+.wind-indicator .value { color: #ffc14a; font-weight: bold; }
 .header-center { display: flex; gap: 6px; flex-wrap: nowrap; }
-.stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 4px; min-width: 58px; }
-.stat .label { font-size: 8px; color: rgba(0, 212, 255, 0.6); }
-.stat .value { font-size: 14px; font-weight: bold; color: #00ff88; }
-.btn-pause,.btn-shift { padding: 6px 8px; background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; border-radius: 4px; color: #ffaa00; font-family: monospace; font-weight: bold; font-size: 10px; cursor: pointer; white-space: nowrap; }
-.btn-shift { border-color: #00d4ff; color: #00d4ff; background: rgba(0, 212, 255, 0.08); }
-.atc-grid { display: grid; grid-template-columns: minmax(0, 1fr) min(340px, 34vw); grid-template-rows: minmax(0, 1fr); gap: 8px; padding: 8px; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 2px 8px; background: rgba(120, 255, 170, 0.05); border: 1px solid rgba(120, 255, 170, 0.2); border-radius: 4px; min-width: 58px; }
+.stat .label { font-size: 8px; color: rgba(190, 255, 214, 0.6); }
+.stat .value { font-size: 14px; font-weight: bold; color: #b6ff8a; }
+.btn-pause,.btn-shift,.btn-help { min-height: 36px; padding: 6px 8px; background: rgba(255, 193, 74, 0.1); border: 1px solid #ffc14a; border-radius: 6px; color: #ffc14a; font-family: ui-monospace, monospace; font-weight: bold; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.btn-shift { border-color: #8ef6c2; color: #d7ffe8; background: rgba(80, 180, 120, 0.12); }
+.btn-help { border-color: #ffe14a; color: #ffe14a; background: rgba(255, 225, 74, 0.1); }
+.atc-grid { display: grid; grid-template-columns: minmax(0, 1fr) min(360px, 32vw); grid-template-rows: minmax(0, 1fr); gap: 8px; padding: 8px; flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .radar-section { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; min-height: 0; min-width: 0; height: 100%; overflow: hidden; }
-.altitude-ladder { min-height: 0; overflow: auto; }
-.control-section { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; overflow: hidden; }
-.dock-tabs { display: none; gap: 6px; flex: 0 0 auto; }
-.dock-tab { flex: 1; padding: 6px 8px; background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.35); border-radius: 4px; color: #9ad7ff; font-family: monospace; font-size: 10px; font-weight: bold; cursor: pointer; }
-.dock-tab.active { color: #041018; background: #00d4ff; }
-.dock-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
-.emergency-alert { background: rgba(255, 0, 0, 0.15); border: 2px solid #ff0000; border-radius: 6px; padding: 8px; animation: pulse 1s infinite; flex: 0 0 auto; }
-.alert-title { font-weight: bold; color: #ff6666; font-size: 12px; margin-bottom: 4px; }
-.emergency-alert p { font-size: 11px; color: #ffcccc; margin: 0; }
-.command-box { background: #061018; border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
-.command-box label { font-size: 10px; color: #00ff88; letter-spacing: 0.04em; }
-.command-row { display: flex; gap: 6px; align-items: stretch; }
-.command-row input { flex: 1; min-width: 0; background: #030b11; border: 1px solid rgba(0, 212, 255, 0.35); color: #d8fff0; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
-.command-row button { background: rgba(0, 255, 136, 0.12); color: #00ff88; border: 1px solid #00ff88; border-radius: 4px; font-family: monospace; font-weight: bold; padding: 0 10px; cursor: pointer; }
-.mic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 78px; padding: 0 8px; border-radius: 999px; border: 2px solid #00ff88; background: rgba(0, 255, 136, 0.18); color: #d8fff0; font-family: monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
+.altitude-ladder { min-height: 0; overflow: hidden; }
+.control-section { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.command-pad { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: hidden; padding: 6px; background: rgba(3, 14, 9, 0.96); border: 1px solid rgba(120, 255, 170, 0.28); border-radius: 12px; }
+.command-pad.armed { border-color: #ffd15a; box-shadow: 0 0 0 1px rgba(255, 209, 90, 0.35); }
+.pad-title { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; min-height: 20px; font-size: 11px; color: #b7d8c4; white-space: nowrap; overflow: hidden; }
+.pad-title strong { color: #ffe7a3; font-size: 13px; letter-spacing: 0.04em; }
+.pad-row { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 4px; }
+.pad-row.two { grid-template-columns: 1fr 1fr; }
+.pad-btn { min-height: 48px; height: 48px; padding: 0 6px; border-radius: 8px; border: 1px solid rgba(140, 255, 186, 0.45); background: #0c2418; color: #e7fff2; font-family: ui-monospace, monospace; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; cursor: pointer; }
+.pad-btn:disabled { opacity: 0.4; cursor: default; }
+.pad-btn.land { background: #145233; border-color: #3dff9a; color: #e9fff3; }
+.pad-btn.go { background: #2a2110; border-color: #ffc14a; color: #ffe1a8; }
+.command-box { display: flex; flex-direction: column; flex: 0 0 auto; }
+.command-row { display: flex; gap: 4px; align-items: stretch; }
+.command-row input { flex: 1; min-width: 0; min-height: 48px; background: #04110b; border: 1px solid rgba(140, 255, 186, 0.4); color: #e7fff2; border-radius: 8px; padding: 0 8px; font-family: ui-monospace, monospace; font-size: 13px; }
+.command-row button { min-height: 48px; min-width: 52px; background: rgba(80, 180, 120, 0.16); color: #d7ffe8; border: 1px solid #8ef6c2; border-radius: 8px; font-family: ui-monospace, monospace; font-weight: bold; padding: 0 8px; cursor: pointer; }
+.mic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 72px; min-height: 48px; padding: 0 8px; border-radius: 8px; border: 2px solid #8ef6c2; background: rgba(80, 180, 120, 0.2); color: #e7fff2; font-family: ui-monospace, monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
 .mic-btn.listening { background: #ff3355; border-color: #ffd0d8; color: white; }
-.mic-btn.unsupported, .mic-btn:disabled { opacity: 1; border-color: #ffaa00; color: #ffdd88; background: rgba(255, 170, 0, 0.15); cursor: not-allowed; }
+.mic-btn.unsupported, .mic-btn:disabled { opacity: 1; border-color: #ffc14a; color: #ffe1a8; background: rgba(255, 193, 74, 0.15); cursor: not-allowed; }
 .mic-icon { width: 14px; height: 14px; }
-.voice-panel { font-size: 11px; color: #d8fff0; line-height: 1.35; max-height: 72px; overflow: auto; }
-.voice-panel p { margin: 0 0 2px; }
-.voice-live { color: #7dffa8; }
-.voice-note, .voice-panel .miss { color: #ffcc66; }
-.metar-line { font-size: 10px; color: #9ad7ff; line-height: 1.4; }
-.radio-log-panel { background: #030b11; border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; padding: 8px; min-height: 0; }
-.radio-log-title { color: #00ff88; font-size: 11px; margin-bottom: 8px; letter-spacing: 0.04em; }
-.radio-log-entry { font-size: 10px; color: #89ffb5; margin-bottom: 4px; line-height: 1.4; }
-.radio-log-entry .time { color: rgba(137,255,181,0.6); margin-right: 6px; }
-.gameover-stat { margin: 8px 0; color: #ff9999; }
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 rgba(255, 0, 0, 0.5); } 50% { box-shadow: 0 0 12px rgba(255, 0, 0, 0.5); } }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-.modal { background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); border: 2px solid #00d4ff; border-radius: 8px; padding: 24px; max-width: min(500px, 100%); max-height: min(80dvh, calc(var(--app-height, 100dvh) - 24px)); display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); text-align: center; overflow: auto; }
-.briefing-content { text-align: left; font-size: 12px; margin: 16px 0; line-height: 1.6; flex: 1; overflow-y: auto; }
-.btn-start { margin-top: 16px; padding: 12px 24px; background: linear-gradient(135deg, #00d4ff, #00ff88); border: none; border-radius: 6px; color: #0a1929; font-family: monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
-.btn-help { padding: 6px 8px; background: rgba(255, 225, 74, 0.12); border: 1px solid #ffe14a; border-radius: 4px; color: #ffe14a; font-family: monospace; font-weight: bold; font-size: 10px; cursor: pointer; white-space: nowrap; }
+.pad-status { height: 32px; overflow: hidden; font-size: 11px; line-height: 16px; color: #d7ffe8; }
+.pad-status p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.voice-panel { height: 16px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; color: #d7ffe8; }
+.voice-panel p { display: inline; margin: 0 8px 0 0; }
+.voice-live { color: #b6ff8a; }
+.voice-note, .voice-panel .miss { color: #ffd27a; }
+.pad-keys { display: none; margin: 0; font-size: 9px; letter-spacing: 0.02em; color: rgba(190, 255, 214, 0.55); white-space: nowrap; overflow: hidden; }
+.emergency-alert { display: flex; gap: 8px; align-items: center; margin: 4px 8px 0; padding: 4px 8px; max-height: 32px; overflow: hidden; background: rgba(255, 40, 40, 0.16); border: 1px solid #ff5a5a; border-radius: 6px; animation: pulse 1s infinite; flex: 0 0 auto; color: #ffd0d0; font-size: 12px; white-space: nowrap; }
+.alert-title { font-weight: bold; color: #ff8d8d; font-size: 12px; }
+.touchdown-banner { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 8px 16px; border-radius: 999px; background: rgba(255, 214, 102, 0.95); color: #1a1404; font-weight: 800; letter-spacing: 0.08em; font-size: 16px; }
+.gameover-stat { margin: 8px 0; color: #ffb4b4; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 rgba(255, 0, 0, 0.45); } 50% { box-shadow: 0 0 12px rgba(255, 70, 70, 0.55); } }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.modal { background: radial-gradient(circle at 50% 0%, #163528, #07110d 70%); border: 1px solid rgba(140, 255, 186, 0.45); border-radius: 12px; padding: 24px; max-width: min(520px, 100%); max-height: min(80dvh, calc(var(--app-height, 100dvh) - 24px)); display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); text-align: center; overflow: auto; color: #e7fff2; }
+.briefing-content { text-align: left; font-size: 13px; margin: 16px 0; line-height: 1.55; flex: 1; overflow-y: auto; }
+.btn-start { margin-top: 16px; min-height: 48px; padding: 12px 24px; background: linear-gradient(135deg, #d6ff78, #7dffa8); border: none; border-radius: 8px; color: #07140c; font-family: ui-monospace, monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
 .tutorial-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 .tutorial-ring { position: fixed; border: 2px solid #ffe14a; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .tutorial-ring-secondary { box-shadow: none; border-style: dashed; }
-.tutorial-card { position: fixed; left: 16px; bottom: 16px; width: min(420px, calc(100vw - 380px)); max-height: min(46dvh, 420px); overflow: auto; pointer-events: auto; background: rgba(7, 20, 34, 0.96); border: 2px solid #ffe14a; border-radius: 12px; padding: 12px 14px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
-.tutorial-card h2 { margin: 0 0 6px; font-size: 16px; color: #ffe14a; }
-.tutorial-card p { margin: 0 0 6px; font-size: 12px; line-height: 1.35; color: #d5fff0; }
-.tutorial-kicker { font-size: 10px; letter-spacing: 0.08em; color: #00ff88; margin-bottom: 4px; }
-.tutorial-example { background: #030b11; border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 6px; padding: 8px; font-family: monospace; }
-.tutorial-sheet p { display: flex; gap: 8px; font-family: monospace; font-size: 11px; line-height: 1.25; margin: 0 0 2px; color: #b7ffe0; }
-.tutorial-sheet span { color: #ffaa00; min-width: 64px; }
+.tutorial-card { position: fixed; left: 16px; top: calc(env(safe-area-inset-top) + 56px); width: min(420px, calc(100vw - 400px)); max-height: 168px; overflow: hidden; pointer-events: auto; background: rgba(6, 16, 12, 0.96); border: 1px solid #ffe14a; border-radius: 12px; padding: 10px 12px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
+.tutorial-card.open { max-height: min(42dvh, 360px); overflow: auto; }
+.tutorial-card h2 { margin: 0 0 4px; font-size: 15px; color: #ffe14a; }
+.tutorial-card p { margin: 0 0 4px; font-size: 12px; line-height: 1.35; color: #d5fff0; }
+.tutorial-kicker { font-size: 10px; letter-spacing: 0.08em; color: #9dffc0; margin-bottom: 2px; }
+.tutorial-example { background: #04110b; border: 1px solid rgba(140, 255, 186, 0.35); border-radius: 6px; padding: 6px 8px; font-family: ui-monospace, monospace; }
+.tutorial-sheet p { display: flex; gap: 8px; font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.25; margin: 0 0 2px; color: #c8ffe2; }
+.tutorial-sheet span { color: #ffc14a; min-width: 64px; }
 .tutorial-tips { margin: 0 0 8px; padding-left: 18px; font-size: 12px; line-height: 1.4; }
-.tutorial-feedback { background: rgba(0, 212, 255, 0.08); border-left: 3px solid #00d4ff; padding: 6px 8px; margin-bottom: 8px; }
+.tutorial-feedback { background: rgba(120, 255, 170, 0.08); border-left: 3px solid #8ef6c2; padding: 6px 8px; margin-bottom: 8px; }
 .tutorial-feedback p { margin: 0; font-size: 12px; }
 .tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.tutorial-actions .btn-start, .tutorial-actions .btn-shift { margin-top: 0; }
+.tutorial-actions .btn-start, .tutorial-actions .btn-shift, .tutorial-actions .btn-help { margin-top: 0; min-height: 36px; }
 .help-overlay { z-index: 1200; }
 .help-modal { text-align: left; width: min(520px, 92vw); }
-.command-feedback { font-size: 11px; color: #d8fff0; line-height: 1.4; max-height: 64px; overflow: auto; }
-.command-feedback .miss { color: #ffcc66; }
-@media (max-width: 1000px), (max-height: 700px) {
-  .atc-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(150px, 42%); }
+.atc-setup { background: radial-gradient(circle at 50% -10%, #143628, #050a08 60%); color: #e7fff2; font-family: ui-monospace, monospace; }
+.atc-setup h1, .atc-setup h2 { letter-spacing: 0.06em; }
+.airport-card { width: 100%; text-align: left; border-radius: 12px; border: 1px solid rgba(140, 255, 186, 0.28); background: rgba(6, 18, 12, 0.92); padding: 14px; color: inherit; min-height: 88px; }
+.airport-card.locked { opacity: 0.5; }
+@media (min-width: 1100px) and (min-height: 760px) {
+  .pad-keys { display: block; }
+}
+@media (max-width: 1100px), (max-height: 760px) {
+  .atc-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .radar-section { grid-template-columns: minmax(0, 1fr); }
   .altitude-ladder { display: none; }
   .stat-optional { display: none; }
-  .dock-tabs { display: flex; }
-  .radio-log-desktop { display: none; }
-  .metar-line { display: none; }
-  .control-panel.empty { min-height: 0; }
-  .tutorial-card { top: auto; bottom: calc(env(safe-area-inset-bottom) + 44%); left: 8px; right: 8px; width: auto; max-height: 112px; }
-  .state-grid { display: none; }
-  .control-panel { padding: 6px; }
+  .tutorial-card { top: calc(env(safe-area-inset-top) + 48px); left: 8px; right: 8px; width: auto; max-height: 132px; }
+  .tutorial-card.open { max-height: 34dvh; }
 }
 @media (max-height: 520px) and (min-width: 640px) {
-  .atc-grid { grid-template-columns: minmax(0, 1fr) min(320px, 48vw); grid-template-rows: minmax(0, 1fr); }
-  .tutorial-card { top: auto; bottom: calc(env(safe-area-inset-bottom) + 8px); left: 8px; right: auto; width: min(340px, 46vw); max-height: 108px; }
+  .atc-header { max-height: 36px; }
+  .atc-grid { grid-template-columns: minmax(0, 1fr) min(268px, 46vw); grid-template-rows: minmax(0, 1fr); gap: 6px; padding: 6px; }
+  .pad-btn, .command-row input, .command-row button, .mic-btn { min-height: 44px; height: 44px; }
+  .pad-btn { font-size: 11px; padding: 0 3px; }
+  .pad-btn.land { font-size: 10px; letter-spacing: 0; }
+  .pad-status { height: 16px; }
+  .voice-panel { display: none; }
+  .command-pad { gap: 3px; padding: 4px; }
+  .tutorial-card { top: calc(env(safe-area-inset-top) + 40px); left: 8px; right: auto; width: min(360px, 48vw); max-height: 84px; }
 }
 @media (max-width: 420px) {
   .airport-name { font-size: 14px; }
   .wind-indicator { display: none; }
-  .mic-btn { min-width: 68px; padding: 0 6px; }
+  .mic-btn { min-width: 64px; padding: 0 6px; font-size: 10px; }
+  .pad-title span { display: none; }
 }
 `;
 
@@ -212,7 +225,7 @@ export default function ATCv2() {
   const [commandText, setCommandText] = useState("");
   const [commandFeedback, setCommandFeedback] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [dockTab, setDockTab] = useState("controls");
+  const [touchdown, setTouchdown] = useState(null);
   const [tutorialIndex, setTutorialIndex] = useState(-1);
   const [tutorialComplete, setTutorialComplete] = useState(false);
   const [tutorialOffer, setTutorialOffer] = useState(() => (
@@ -237,6 +250,8 @@ export default function ATCv2() {
   const tutorialIndexRef = useRef(-1);
   const landedPendingRef = useRef(false);
   const scopeClickConsumedRef = useRef(false);
+  const freezeRef = useRef(false);
+  const commandRef = useRef(null);
 
   gameStateRef.current = gameState;
   windRef.current = wind;
@@ -254,6 +269,62 @@ export default function ATCv2() {
 
   const logRef = useRef(addRadioLog);
   logRef.current = addRadioLog;
+
+  useEffect(() => {
+    if (!touchdown) return undefined;
+    const timer = setTimeout(() => setTouchdown(null), 2500);
+    return () => clearTimeout(timer);
+  }, [touchdown]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    window.__atcPreview = {
+      setScene(scene = {}) {
+        const planes = (scene.aircraft || []).map((partial, index) => ({
+          id: partial.id || `preview-${index}`,
+          callsign: partial.callsign || `UAL${index + 1}`,
+          x: partial.x || 0,
+          y: partial.y || 0,
+          altitude: partial.altitude ?? 4000,
+          speed: partial.speed ?? 180,
+          desiredSpeed: partial.desiredSpeed ?? partial.speed ?? 180,
+          desiredAltitude: partial.desiredAltitude ?? partial.altitude ?? 4000,
+          heading: partial.heading ?? 240,
+          desiredHeading: partial.desiredHeading ?? partial.heading ?? 240,
+          actualHeading: partial.actualHeading ?? partial.heading ?? 240,
+          status: partial.status || "inbound",
+          runway: partial.runway || activeRunwayRef.current || "24L",
+          clearedToLand: Boolean(partial.clearedToLand),
+          emergency: partial.emergency || null,
+          verticalSpeed: partial.verticalSpeed || 0,
+          trajectory: partial.trajectory || [],
+          aircraft_type: partial.aircraft_type || "B738",
+        }));
+        aircraftRef.current = planes;
+        setAircraft(planes);
+        const sel = scene.selectedId === undefined ? (planes[0]?.id || null) : scene.selectedId;
+        selectedIdRef.current = sel;
+        setSelectedId(sel);
+        emergencyRef.current = scene.emergency || null;
+        setEmergency(scene.emergency || null);
+        if (scene.runway) {
+          activeRunwayRef.current = scene.runway;
+          setActiveRunway(scene.runway);
+        }
+        if (scene.tutorial === false) {
+          tutorialIndexRef.current = -1;
+          setTutorialIndex(-1);
+          setTutorialComplete(false);
+        }
+        freezeRef.current = scene.freeze !== false;
+        if (scene.touchdown) setTouchdown({ callsign: scene.touchdown, at: performance.now() });
+        if (scene.radio) logRef.current("ATC", scene.radio);
+      },
+    };
+    return () => {
+      delete window.__atcPreview;
+    };
+  }, []);
 
   const advanceTutorialEvent = (event) => {
     if (tutorialIndexRef.current < 0) return;
@@ -310,7 +381,7 @@ export default function ATCv2() {
       const rawDt = Math.max(0, (now - last) / 1000);
       last = now;
       raf = requestAnimationFrame(frame);
-      if (gameStateRef.current !== GAME_STATE.ACTIVE || endedRef.current) return;
+      if (gameStateRef.current !== GAME_STATE.ACTIVE || endedRef.current || freezeRef.current) return;
 
       const dt = clampDelta(rawDt || 0.016);
       const field = airportRef.current;
@@ -426,6 +497,7 @@ export default function ATCv2() {
       landedNow.forEach((plane) => {
         statsRef.current.successful_landings += 1;
         sounds.landed();
+        setTouchdown({ callsign: plane.callsign, at: performance.now() });
         logRef.current("ATC", `${plane.callsign} landed.`);
         scoreSession();
         if (tutorialIndexRef.current >= 0) advanceRef.current({ type: "landed" });
@@ -551,7 +623,7 @@ export default function ATCv2() {
     const field = airportRef.current;
     const runway = selectActiveRunway(field, windRef.current) || field?.runways?.[0];
     const first = createInboundAircraft(0, field, runway, 24);
-    bootAircraft(first, runway, { selectFirst: true });
+    bootAircraft(first, runway, { selectFirst: false });
     addRadioLog("ATC", `${first.callsign} is inbound runway ${runway}.`);
   };
 
@@ -743,6 +815,57 @@ export default function ATCv2() {
     setCommandText("");
   };
 
+  commandRef.current = handleCommand;
+
+  useEffect(() => {
+    const typing = (event) => {
+      const tag = event.target?.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || event.target?.isContentEditable;
+    };
+    const onKeyDown = (event) => {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || typing(event)) return;
+      if (gameStateRef.current !== GAME_STATE.ACTIVE && gameStateRef.current !== GAME_STATE.PAUSED) return;
+      const plane = aircraftRef.current.find((item) => item.id === selectedIdRef.current);
+      if (!plane) return;
+      const shift = event.shiftKey;
+      let command = null;
+      switch (event.code) {
+        case "ArrowLeft":
+          command = headingCommand(plane, shift ? -30 : -10);
+          break;
+        case "ArrowRight":
+          command = headingCommand(plane, shift ? 30 : 10);
+          break;
+        case "ArrowUp":
+          command = altitudeCommand(plane, 1000);
+          break;
+        case "ArrowDown":
+          command = altitudeCommand(plane, -1000);
+          break;
+        case "Minus":
+        case "NumpadSubtract":
+          command = speedCommand(plane, -20);
+          break;
+        case "Equal":
+        case "NumpadAdd":
+          command = speedCommand(plane, 20);
+          break;
+        case "KeyL":
+          command = { type: "cleared_to_land", runway: plane.runway || activeRunwayRef.current };
+          break;
+        case "KeyG":
+          command = { type: "go_around" };
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      commandRef.current?.(command);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const togglePause = () => {
     setGameState((prev) => {
       const next = prev === GAME_STATE.ACTIVE ? GAME_STATE.PAUSED : GAME_STATE.ACTIVE;
@@ -821,6 +944,16 @@ export default function ATCv2() {
         data-aircraft={JSON.stringify(telemetry)}
         hidden
       />
+      {emergency && (
+        <div className="emergency-alert" data-testid="emergency-banner">
+          <span className="alert-title">EMERGENCY</span>
+          <span>{emergency.message}</span>
+        </div>
+      )}
+      {touchdown && (
+        <div className="touchdown-banner" data-testid="touchdown-banner">{touchdown.callsign} TOUCHDOWN</div>
+      )}
+
       <motion.div className="atc-header" initial={{ y: -20 }} animate={{ y: 0 }}>
         <div className="header-left">
           <h1 className="airport-name">{airport?.id}</h1>
@@ -870,66 +1003,22 @@ export default function ATCv2() {
             weatherEffects={weatherEffects}
             airport={airport}
             activeRunway={activeRunway}
+            touchdown={touchdown}
           />
           <AltitudeLadder selectedPlane={selected} />
         </div>
 
         <div className="control-section">
-          {emergency && (
-            <motion.div className="emergency-alert" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-              <div className="alert-title">EMERGENCY</div>
-              <p>{emergency.message}</p>
-            </motion.div>
-          )}
-
-          <form className="command-box" data-testid="command-form" data-coach="command" onSubmit={submitTypedCommand}>
-            <label htmlFor="atc-command">CLEARANCE</label>
-            {weatherEffects?.metar && <div className="metar-line">{weatherEffects.metar}</div>}
-            <div className="command-row">
-              <input
-                id="atc-command"
-                data-testid="command-input"
-                value={commandText}
-                onChange={(event) => setCommandText(event.target.value)}
-                placeholder="UAL123 heading 250"
-                autoComplete="off"
-              />
-              <MicButton />
-              <button type="submit">SEND</button>
-            </div>
-            <SpeechStatus />
-            {commandFeedback && (
-              <div className="command-feedback" data-testid="command-feedback">
-                <div>Heard: {commandFeedback.heard || "—"}</div>
-                <div>Understood: {commandFeedback.understood || "not recognized"}</div>
-                {commandFeedback.suggestion && <div className="miss">Try: {commandFeedback.suggestion}</div>}
-              </div>
-            )}
-          </form>
-
-          <div className="dock-tabs" data-testid="dock-tabs">
-            <button type="button" className={`dock-tab${dockTab === "controls" ? " active" : ""}`} data-testid="dock-tab-controls" onClick={() => setDockTab("controls")}>CONTROLS</button>
-            <button type="button" className={`dock-tab${dockTab === "log" ? " active" : ""}`} data-testid="dock-tab-log" onClick={() => setDockTab("log")}>RADIO</button>
-          </div>
-
-          <div className="dock-body">
-            {(dockTab === "controls") && (
-              <ControlPanel selectedPlane={selected} onCommand={handleCommand} activeRunway={activeRunway} />
-            )}
-            <div className={`radio-log-panel${dockTab === "log" ? "" : " radio-log-desktop"}`}>
-              <div className="radio-log-title">RADIO LOG</div>
-              {radioLog.length === 0 ? (
-                <div className="radio-log-entry">No transmissions yet.</div>
-              ) : (
-                radioLog.slice(-8).reverse().map((entry) => (
-                  <div className="radio-log-entry" key={entry.id}>
-                    <span className="time">{entry.timestamp}</span>
-                    <strong>{entry.source}:</strong> {entry.message}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <CommandPad
+            selectedPlane={selected}
+            activeRunway={activeRunway}
+            onCommand={handleCommand}
+            commandText={commandText}
+            onCommandText={setCommandText}
+            onSubmit={submitTypedCommand}
+            feedback={commandFeedback}
+            lastRadio={radioLog[radioLog.length - 1] || null}
+          />
         </div>
       </div>
 

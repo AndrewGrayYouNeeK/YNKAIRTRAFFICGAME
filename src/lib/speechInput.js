@@ -5,7 +5,7 @@ export function getSpeechRecognition(root) {
 }
 
 export function unsupportedSpeechMessage() {
-  return "This browser has no speech recognition. iOS Firefox and some iOS Safari versions do not provide webkitSpeechRecognition. Type a clearance or use the sliders.";
+  return "This browser has no speech recognition. iOS Firefox and some iOS Safari versions do not provide webkitSpeechRecognition. Type a clearance or use the command buttons.";
 }
 
 export function speechErrorMessage(code) {
@@ -14,7 +14,7 @@ export function speechErrorMessage(code) {
     case "service-not-allowed":
       return "Microphone permission was denied. Allow the mic for this site, then tap TAP MIC again. You can also type the clearance.";
     case "audio-capture":
-      return "No microphone was found. Type the clearance or use the sliders.";
+      return "No microphone was found. Type the clearance or use the command buttons.";
     case "network":
       return "Speech recognition needs a network connection. Type the clearance instead.";
     case "no-speech":

@@ -15,10 +15,10 @@ export const CHEAT_SHEET = [
 ];
 
 export const VOICE_TIPS = [
-  "Voice is optional. The sliders and the typed box already fly the airplane.",
-  "Tap TAP MIC beside the typed box, speak, then tap STOP. Holding Space does the same when you are not typing.",
+  "Voice is optional. The big buttons and the typed box already fly the airplane.",
+  "Tap TAP MIC in the command pad, speak, then tap STOP. Holding Space does the same when you are not typing.",
   "Say the callsign first, then one instruction. Example: “United one two three, heading two five zero.”",
-  "The line under the box shows Listening, then Heard and Understood. If the browser has no mic support, that line says so.",
+  "The line under the buttons shows Listening, then Heard and Understood. If the browser has no mic support, that line says so.",
 ];
 
 export const TUTORIAL_STEPS = [
@@ -34,31 +34,31 @@ export const TUTORIAL_STEPS = [
     action: "select-aircraft",
     highlight: "scope",
     title: "Select the arrival",
-    body: "Click the airplane itself, not the empty scope. The right-hand panel fills in with that callsign. Every slider and typed clearance applies to the selected target.",
+    body: "Tap the airplane itself. A command pad opens in reach of your thumb. Every button, the mic, and the typed box apply to that target.",
   },
   {
     id: "heading",
     action: "change-heading",
     highlight: "heading",
     also: "command",
-    title: "Turn with the heading slider",
-    body: "Drag the Heading slider and release it. Releasing sends the instruction, so the radio is not spammed while you drag. You can type the same thing instead.",
+    title: "Turn the airplane",
+    body: "Tap L30, L10, R10, or R30. Each tap turns by that many degrees. You can type a heading instead.",
   },
   {
     id: "altitude",
     action: "change-altitude",
     highlight: "altitude",
     also: "command",
-    title: "Set an altitude",
-    body: "Use the Altitude slider, release it, or type a descend or climb clearance. The trend arrow on the scope follows the new altitude.",
+    title: "Climb or descend",
+    body: "Tap CLIMB or DESCEND. Each tap changes the altitude by 1000 feet, or type a climb or descend clearance.",
   },
   {
     id: "speed",
     action: "change-speed",
     highlight: "speed",
     also: "command",
-    title: "Set a speed",
-    body: "Use the Speed slider or type a speed clearance. Slower is easier on final. This arrival stays gentle either way.",
+    title: "Change speed",
+    body: "Tap SLOWER or FASTER. Each tap changes speed by 20 knots. You can type a speed clearance too.",
   },
   {
     id: "land",
@@ -66,7 +66,7 @@ export const TUTORIAL_STEPS = [
     highlight: "land",
     also: "command",
     title: "Clear them to land",
-    body: "Press CLEARED TO LAND, or type it. They will capture this airport’s runway and fly the glideslope. Nothing in this lesson can fail you.",
+    body: "Tap CLEARED TO LAND, or type it. They will capture this airport’s runway and fly the glideslope. Nothing in this lesson can fail you.",
   },
   {
     id: "voice",

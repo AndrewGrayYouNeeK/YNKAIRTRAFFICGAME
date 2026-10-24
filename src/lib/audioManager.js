@@ -1,7 +1,7 @@
 // Audio cues for game events
 const audioContext = typeof window !== "undefined" ? new (window.AudioContext || window.webkitAudioContext)() : null;
 
-function playTone(freq, duration = 200, volume = 0.3, type = "sine") {
+function playTone(freq, duration = 200, volume = 0.12, type = "sine") {
   if (!audioContext) return;
   const now = audioContext.currentTime;
   const osc = audioContext.createOscillator();
@@ -24,7 +24,7 @@ function playChord(frequencies, duration = 200) {
   const now = audioContext.currentTime;
   const gain = audioContext.createGain();
   gain.connect(audioContext.destination);
-  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.setValueAtTime(0.08, now);
   gain.gain.exponentialRampToValueAtTime(0.01, now + duration / 1000);
 
   frequencies.forEach((freq) => {
@@ -39,14 +39,14 @@ function playChord(frequencies, duration = 200) {
 export const sounds = {
   radarSweep: () => playTone(440, 100, 0.1),
   planeContact: () => playTone(800, 150, 0.3),
-  headingLock: () => playTone(600, 100, 0.2),
-  warningBeep: () => playTone(1200, 200, 0.4),
-  collision: () => playChord([200, 300, 400], 500),
-  landed: () => playChord([400, 500, 600], 300),
-  separated: () => playTone(1000, 100, 0.3),
+  headingLock: () => playTone(600, 80, 0.06),
+  warningBeep: () => playTone(880, 120, 0.08),
+  collision: () => playChord([200, 300, 400], 400),
+  landed: () => playChord([400, 500, 600], 280),
+  separated: () => playTone(740, 90, 0.07),
   emergencyAlert: () => {
-    playTone(1000, 150, 0.5);
-    setTimeout(() => playTone(1000, 150, 0.5), 200);
+    playTone(880, 120, 0.1);
+    setTimeout(() => playTone(880, 120, 0.1), 180);
   },
 };
 
@@ -55,7 +55,7 @@ export function speakText(text, rate = 1) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
   utterance.pitch = 1.2;
-  utterance.volume = 0.6;
+  utterance.volume = 0.35;
   window.speechSynthesis.speak(utterance);
 }
 

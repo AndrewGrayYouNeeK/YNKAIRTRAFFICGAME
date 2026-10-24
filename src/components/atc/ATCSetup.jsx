@@ -43,7 +43,7 @@ export default function ATCSetup({
   };
 
   return (
-    <div className="w-full h-full bg-background flex flex-col items-center justify-start p-6 overflow-y-auto">
+    <div className="atc-setup w-full h-full flex flex-col items-center justify-start p-6 overflow-y-auto">
       <div className="w-full max-w-4xl space-y-6 py-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -83,7 +83,7 @@ export default function ATCSetup({
           <div className="modal">
             <h2>First time on the scope?</h2>
             <div className="briefing-content">
-              <p>A short guided mission puts one slow arrival on the screen and walks you through the scope, the sliders, typed clearances, and an optional radio call. You cannot fail it.</p>
+              <p>A short guided mission puts one slow arrival on the screen and walks you through the scope, the thumb buttons, typed clearances, and an optional radio call. You cannot fail it.</p>
             </div>
             <button type="button" className="btn-start" data-testid="tutorial-start" onClick={onStartTutorial}>
               START THE GUIDED MISSION

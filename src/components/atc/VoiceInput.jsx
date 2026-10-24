@@ -198,7 +198,7 @@ export function SpeechStatus() {
         </>
       )}
       {supported && !isTransmitting && !notice && !lastLog && (
-        <p>Tap TAP MIC, say the callsign and one instruction, then tap STOP.</p>
+        <p>Mic ready</p>
       )}
     </div>
   );
