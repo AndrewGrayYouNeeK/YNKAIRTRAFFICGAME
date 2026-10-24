@@ -16,9 +16,9 @@ export const CHEAT_SHEET = [
 
 export const VOICE_TIPS = [
   "Voice is optional. The sliders and the typed box already fly the airplane.",
-  "Hold the round PTT button, or hold Space, and speak after the click.",
+  "Tap TAP MIC beside the typed box, speak, then tap STOP. Holding Space does the same when you are not typing.",
   "Say the callsign first, then one instruction. Example: “United one two three, heading two five zero.”",
-  "The radio shows Heard (your words) and Understood (the clearance). If it misses, say the suggested phrase.",
+  "The line under the box shows Listening, then Heard and Understood. If the browser has no mic support, that line says so.",
 ];
 
 export const TUTORIAL_STEPS = [
@@ -73,7 +73,7 @@ export const TUTORIAL_STEPS = [
     action: "voice-optional",
     highlight: "voice",
     title: "Voice is optional",
-    body: "If you have a microphone, try one clearance. Otherwise continue and finish the landing with the controls you already used.",
+    body: "Tap TAP MIC next to the typed clearance and say one instruction. The line under the box shows what it heard. If this browser cannot use the mic, that line explains why, and you can continue without voice.",
   },
   {
     id: "touchdown",

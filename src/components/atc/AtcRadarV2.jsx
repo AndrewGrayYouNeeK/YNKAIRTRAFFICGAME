@@ -36,7 +36,7 @@ export default function AtcRadarV2({
   const windRef = useRef(wind);
   const airportRef = useRef(airport);
   const runwayRef = useRef(activeRunway);
-  const [size, setSize] = useState(500);
+  const [size, setSize] = useState(64);
 
   aircraftRef.current = aircraft;
   selectedRef.current = selectedPlane;
@@ -48,7 +48,10 @@ export default function AtcRadarV2({
     const container = containerRef.current;
     if (!container) return undefined;
     const resizeObserver = new ResizeObserver(([entry]) => {
-      const next = Math.max(280, Math.floor(Math.min(entry.contentRect.width, entry.contentRect.height || entry.contentRect.width)));
+      const width = entry.contentRect.width;
+      const height = entry.contentRect.height;
+      const available = height > 0 ? Math.min(width, height) : width;
+      const next = Math.max(64, Math.floor(available || 64));
       setSize(next);
     });
     resizeObserver.observe(container);
@@ -291,7 +294,10 @@ export default function AtcRadarV2({
         position: "relative",
         width: "100%",
         height: "100%",
-        minHeight: "320px",
+        minHeight: 0,
+        minWidth: 0,
+        maxWidth: "100%",
+        maxHeight: "100%",
         border: "2px solid #00d4ff",
         borderRadius: 8,
         overflow: "hidden",
@@ -305,7 +311,7 @@ export default function AtcRadarV2({
         ref={canvasRef}
         onClick={handleCanvasClick}
         className="atc-radar-canvas"
-        style={{ width: size, height: size, display: "block", cursor: "crosshair" }}
+        style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: size, height: size, display: "block", cursor: "crosshair" }}
       />
       {weatherEffects?.lowVis && (
         <div

@@ -7,7 +7,7 @@ import AltitudeLadder from "../components/atc/AltitudeLadder";
 import ATCSetup from "../components/atc/ATCSetup";
 import HelpSheet from "../components/atc/HelpSheet";
 import TutorialCoach from "../components/atc/TutorialCoach";
-import VoiceInput from "../components/atc/VoiceInput";
+import { MicButton, SpeechProvider, SpeechStatus } from "../components/atc/VoiceInput";
 import parseATCCommand from "../lib/voiceCommandParser";
 import { api } from "../api/client";
 import { getAirport } from "../lib/airports";
@@ -53,45 +53,58 @@ const EMPTY_STATS = {
 };
 
 const ATC_STYLES = `
-.atc-v2-container { width: 100%; height: 100vh; background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); display: flex; flex-direction: column; overflow: hidden; font-family: monospace; color: #00d4ff; }
-.atc-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 2px solid rgba(0, 212, 255, 0.2); background: rgba(10, 25, 41, 0.92); flex-wrap: wrap; gap: 12px; }
-.header-left,.header-right { display: flex; gap: 12px; align-items: center; }
-.airport-name { font-size: 22px; font-weight: bold; color: #00ff88; margin: 0; }
-.wind-indicator { display: flex; flex-direction: column; font-size: 11px; }
+.atc-v2-container { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); display: flex; flex-direction: column; overflow: hidden; font-family: monospace; color: #00d4ff; }
+.atc-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 2px solid rgba(0, 212, 255, 0.2); background: rgba(10, 25, 41, 0.92); flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; overflow-x: auto; max-height: 52px; }
+.header-left,.header-right { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+.airport-name { font-size: 18px; font-weight: bold; color: #00ff88; margin: 0; white-space: nowrap; }
+.wind-indicator { display: flex; flex-direction: column; font-size: 10px; white-space: nowrap; }
 .wind-indicator .value { color: #ffaa00; font-weight: bold; }
-.header-center { display: flex; gap: 12px; flex-wrap: wrap; }
-.stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 4px; min-width: 72px; }
-.stat .label { font-size: 9px; color: rgba(0, 212, 255, 0.6); }
-.stat .value { font-size: 16px; font-weight: bold; color: #00ff88; }
-.btn-pause,.btn-shift { padding: 8px 12px; background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; border-radius: 4px; color: #ffaa00; font-family: monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
+.header-center { display: flex; gap: 6px; flex-wrap: nowrap; }
+.stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 4px; min-width: 58px; }
+.stat .label { font-size: 8px; color: rgba(0, 212, 255, 0.6); }
+.stat .value { font-size: 14px; font-weight: bold; color: #00ff88; }
+.btn-pause,.btn-shift { padding: 6px 8px; background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; border-radius: 4px; color: #ffaa00; font-family: monospace; font-weight: bold; font-size: 10px; cursor: pointer; white-space: nowrap; }
 .btn-shift { border-color: #00d4ff; color: #00d4ff; background: rgba(0, 212, 255, 0.08); }
-.atc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; padding: 12px; flex: 1; min-height: 0; overflow: hidden; }
-.radar-section { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 10px; min-height: 0; height: 100%; }
-.control-section { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
-.emergency-alert { background: rgba(255, 0, 0, 0.15); border: 2px solid #ff0000; border-radius: 6px; padding: 12px; animation: pulse 1s infinite; }
-.alert-title { font-weight: bold; color: #ff6666; font-size: 12px; margin-bottom: 6px; }
+.atc-grid { display: grid; grid-template-columns: minmax(0, 1fr) min(340px, 34vw); grid-template-rows: minmax(0, 1fr); gap: 8px; padding: 8px; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.radar-section { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; min-height: 0; min-width: 0; height: 100%; overflow: hidden; }
+.altitude-ladder { min-height: 0; overflow: auto; }
+.control-section { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; overflow: hidden; }
+.dock-tabs { display: none; gap: 6px; flex: 0 0 auto; }
+.dock-tab { flex: 1; padding: 6px 8px; background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.35); border-radius: 4px; color: #9ad7ff; font-family: monospace; font-size: 10px; font-weight: bold; cursor: pointer; }
+.dock-tab.active { color: #041018; background: #00d4ff; }
+.dock-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.emergency-alert { background: rgba(255, 0, 0, 0.15); border: 2px solid #ff0000; border-radius: 6px; padding: 8px; animation: pulse 1s infinite; flex: 0 0 auto; }
+.alert-title { font-weight: bold; color: #ff6666; font-size: 12px; margin-bottom: 4px; }
 .emergency-alert p { font-size: 11px; color: #ffcccc; margin: 0; }
-.command-box { background: #061018; border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.command-box { background: #061018; border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
 .command-box label { font-size: 10px; color: #00ff88; letter-spacing: 0.04em; }
-.command-row { display: flex; gap: 6px; }
-.command-row input { flex: 1; background: #030b11; border: 1px solid rgba(0, 212, 255, 0.35); color: #d8fff0; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
+.command-row { display: flex; gap: 6px; align-items: stretch; }
+.command-row input { flex: 1; min-width: 0; background: #030b11; border: 1px solid rgba(0, 212, 255, 0.35); color: #d8fff0; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
 .command-row button { background: rgba(0, 255, 136, 0.12); color: #00ff88; border: 1px solid #00ff88; border-radius: 4px; font-family: monospace; font-weight: bold; padding: 0 10px; cursor: pointer; }
+.mic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 78px; padding: 0 8px; border-radius: 999px; border: 2px solid #00ff88; background: rgba(0, 255, 136, 0.18); color: #d8fff0; font-family: monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
+.mic-btn.listening { background: #ff3355; border-color: #ffd0d8; color: white; }
+.mic-btn.unsupported, .mic-btn:disabled { opacity: 1; border-color: #ffaa00; color: #ffdd88; background: rgba(255, 170, 0, 0.15); cursor: not-allowed; }
+.mic-icon { width: 14px; height: 14px; }
+.voice-panel { font-size: 11px; color: #d8fff0; line-height: 1.35; max-height: 72px; overflow: auto; }
+.voice-panel p { margin: 0 0 2px; }
+.voice-live { color: #7dffa8; }
+.voice-note, .voice-panel .miss { color: #ffcc66; }
 .metar-line { font-size: 10px; color: #9ad7ff; line-height: 1.4; }
-.radio-log-panel { background: #030b11; border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; padding: 10px; min-height: 120px; }
+.radio-log-panel { background: #030b11; border: 1px solid rgba(0,255,136,0.35); border-radius: 8px; padding: 8px; min-height: 0; }
 .radio-log-title { color: #00ff88; font-size: 11px; margin-bottom: 8px; letter-spacing: 0.04em; }
 .radio-log-entry { font-size: 10px; color: #89ffb5; margin-bottom: 4px; line-height: 1.4; }
 .radio-log-entry .time { color: rgba(137,255,181,0.6); margin-right: 6px; }
 .gameover-stat { margin: 8px 0; color: #ff9999; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 rgba(255, 0, 0, 0.5); } 50% { box-shadow: 0 0 12px rgba(255, 0, 0, 0.5); } }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal { background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); border: 2px solid #00d4ff; border-radius: 8px; padding: 24px; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); text-align: center; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.modal { background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%); border: 2px solid #00d4ff; border-radius: 8px; padding: 24px; max-width: min(500px, 100%); max-height: min(80dvh, calc(var(--app-height, 100dvh) - 24px)); display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); text-align: center; overflow: auto; }
 .briefing-content { text-align: left; font-size: 12px; margin: 16px 0; line-height: 1.6; flex: 1; overflow-y: auto; }
 .btn-start { margin-top: 16px; padding: 12px 24px; background: linear-gradient(135deg, #00d4ff, #00ff88); border: none; border-radius: 6px; color: #0a1929; font-family: monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
-.btn-help { padding: 8px 12px; background: rgba(255, 225, 74, 0.12); border: 1px solid #ffe14a; border-radius: 4px; color: #ffe14a; font-family: monospace; font-weight: bold; font-size: 11px; cursor: pointer; }
+.btn-help { padding: 6px 8px; background: rgba(255, 225, 74, 0.12); border: 1px solid #ffe14a; border-radius: 4px; color: #ffe14a; font-family: monospace; font-weight: bold; font-size: 10px; cursor: pointer; white-space: nowrap; }
 .tutorial-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 .tutorial-ring { position: fixed; border: 2px solid #ffe14a; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .tutorial-ring-secondary { box-shadow: none; border-style: dashed; }
-.tutorial-card { position: fixed; left: 16px; bottom: 16px; width: min(420px, calc(100vw - 380px)); max-height: min(46vh, 420px); overflow: auto; pointer-events: auto; background: rgba(7, 20, 34, 0.96); border: 2px solid #ffe14a; border-radius: 12px; padding: 12px 14px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
+.tutorial-card { position: fixed; left: 16px; bottom: 16px; width: min(420px, calc(100vw - 380px)); max-height: min(46dvh, 420px); overflow: auto; pointer-events: auto; background: rgba(7, 20, 34, 0.96); border: 2px solid #ffe14a; border-radius: 12px; padding: 12px 14px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
 .tutorial-card h2 { margin: 0 0 6px; font-size: 16px; color: #ffe14a; }
 .tutorial-card p { margin: 0 0 6px; font-size: 12px; line-height: 1.35; color: #d5fff0; }
 .tutorial-kicker { font-size: 10px; letter-spacing: 0.08em; color: #00ff88; margin-bottom: 4px; }
@@ -105,16 +118,40 @@ const ATC_STYLES = `
 .tutorial-actions .btn-start, .tutorial-actions .btn-shift { margin-top: 0; }
 .help-overlay { z-index: 1200; }
 .help-modal { text-align: left; width: min(520px, 92vw); }
-.command-feedback { font-size: 11px; color: #d8fff0; line-height: 1.4; }
+.command-feedback { font-size: 11px; color: #d8fff0; line-height: 1.4; max-height: 64px; overflow: auto; }
 .command-feedback .miss { color: #ffcc66; }
-@media (max-width: 1024px) { .atc-grid { grid-template-columns: 1fr; overflow: auto; } .radar-section { grid-template-columns: 1fr; min-height: 420px; } .tutorial-card { width: min(440px, calc(100vw - 24px)); } }
+@media (max-width: 1000px), (max-height: 700px) {
+  .atc-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(150px, 42%); }
+  .radar-section { grid-template-columns: minmax(0, 1fr); }
+  .altitude-ladder { display: none; }
+  .stat-optional { display: none; }
+  .dock-tabs { display: flex; }
+  .radio-log-desktop { display: none; }
+  .metar-line { display: none; }
+  .control-panel.empty { min-height: 0; }
+  .tutorial-card { top: auto; bottom: calc(env(safe-area-inset-bottom) + 44%); left: 8px; right: 8px; width: auto; max-height: 112px; }
+  .state-grid { display: none; }
+  .control-panel { padding: 6px; }
+}
+@media (max-height: 520px) and (min-width: 640px) {
+  .atc-grid { grid-template-columns: minmax(0, 1fr) min(320px, 48vw); grid-template-rows: minmax(0, 1fr); }
+  .tutorial-card { top: auto; bottom: calc(env(safe-area-inset-bottom) + 8px); left: 8px; right: auto; width: min(340px, 46vw); max-height: 108px; }
+}
+@media (max-width: 420px) {
+  .airport-name { font-size: 14px; }
+  .wind-indicator { display: none; }
+  .mic-btn { min-width: 68px; padding: 0 6px; }
+}
 `;
 
-if (typeof document !== "undefined" && !document.getElementById("atc-v2-styles")) {
-  const styleEl = document.createElement("style");
-  styleEl.id = "atc-v2-styles";
+if (typeof document !== "undefined") {
+  let styleEl = document.getElementById("atc-v2-styles");
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = "atc-v2-styles";
+    document.head.appendChild(styleEl);
+  }
   styleEl.textContent = ATC_STYLES;
-  document.head.appendChild(styleEl);
 }
 
 function weatherIntensity(airport) {
@@ -175,6 +212,7 @@ export default function ATCv2() {
   const [commandText, setCommandText] = useState("");
   const [commandFeedback, setCommandFeedback] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [dockTab, setDockTab] = useState("controls");
   const [tutorialIndex, setTutorialIndex] = useState(-1);
   const [tutorialComplete, setTutorialComplete] = useState(false);
   const [tutorialOffer, setTutorialOffer] = useState(() => (
@@ -759,8 +797,20 @@ export default function ATCv2() {
     );
   }
 
+  const speechExample = exampleFor(TUTORIAL_STEPS[tutorialIndex], {
+    callsign: aircraft.find((plane) => plane.tutorialLesson)?.callsign || selected?.callsign || aircraft[0]?.callsign,
+    runway: aircraft.find((plane) => plane.tutorialLesson)?.runway || selected?.runway || activeRunway,
+  });
+
   return (
-    <div className="atc-v2-container">
+    <SpeechProvider
+      onCommand={handleVoiceCommand}
+      aircraft={aircraft}
+      selectedPlane={selected}
+      activeRunway={activeRunway}
+      example={speechExample || ""}
+    >
+    <div className="atc-v2-container" data-testid="game-shell">
       <div
         data-testid="atc-telemetry"
         data-score={score}
@@ -782,9 +832,9 @@ export default function ATCv2() {
         <div className="header-center">
           <div className="stat"><span className="label">SCORE</span><span className="value" data-testid="score-value">{score}</span></div>
           <div className="stat"><span className="label">LANDINGS</span><span className="value" data-testid="landing-count">{landings}</span></div>
-          <div className="stat"><span className="label">TIME</span><span className="value">{Math.floor(time / 60)}:{(time % 60).toString().padStart(2, "0")}</span></div>
-          <div className="stat"><span className="label">AIRCRAFT</span><span className="value">{aircraft.length}/{session?.max_aircraft}</span></div>
-          <div className="stat"><span className="label">SEP LOSS</span><span className="value">{separationCount}/3</span></div>
+          <div className="stat stat-optional"><span className="label">TIME</span><span className="value">{Math.floor(time / 60)}:{(time % 60).toString().padStart(2, "0")}</span></div>
+          <div className="stat stat-optional"><span className="label">AIRCRAFT</span><span className="value">{aircraft.length}/{session?.max_aircraft}</span></div>
+          <div className="stat stat-optional"><span className="label">SEP LOSS</span><span className="value">{separationCount}/3</span></div>
         </div>
         <div className="header-right">
           <button type="button" className="btn-help" data-testid="help-button" onClick={() => setHelpOpen(true)}>HELP</button>
@@ -833,7 +883,7 @@ export default function ATCv2() {
           )}
 
           <form className="command-box" data-testid="command-form" data-coach="command" onSubmit={submitTypedCommand}>
-            <label htmlFor="atc-command">TYPED CLEARANCE</label>
+            <label htmlFor="atc-command">CLEARANCE</label>
             {weatherEffects?.metar && <div className="metar-line">{weatherEffects.metar}</div>}
             <div className="command-row">
               <input
@@ -844,8 +894,10 @@ export default function ATCv2() {
                 placeholder="UAL123 heading 250"
                 autoComplete="off"
               />
+              <MicButton />
               <button type="submit">SEND</button>
             </div>
+            <SpeechStatus />
             {commandFeedback && (
               <div className="command-feedback" data-testid="command-feedback">
                 <div>Heard: {commandFeedback.heard || "—"}</div>
@@ -855,27 +907,28 @@ export default function ATCv2() {
             )}
           </form>
 
-          <VoiceInput
-            onCommand={handleVoiceCommand}
-            aircraft={aircraft}
-            selectedPlane={selected}
-            activeRunway={activeRunway}
-          />
+          <div className="dock-tabs" data-testid="dock-tabs">
+            <button type="button" className={`dock-tab${dockTab === "controls" ? " active" : ""}`} data-testid="dock-tab-controls" onClick={() => setDockTab("controls")}>CONTROLS</button>
+            <button type="button" className={`dock-tab${dockTab === "log" ? " active" : ""}`} data-testid="dock-tab-log" onClick={() => setDockTab("log")}>RADIO</button>
+          </div>
 
-          <ControlPanel selectedPlane={selected} onCommand={handleCommand} activeRunway={activeRunway} />
-
-          <div className="radio-log-panel">
-            <div className="radio-log-title">RADIO LOG</div>
-            {radioLog.length === 0 ? (
-              <div className="radio-log-entry">No transmissions yet.</div>
-            ) : (
-              radioLog.slice(-8).reverse().map((entry) => (
-                <div className="radio-log-entry" key={entry.id}>
-                  <span className="time">{entry.timestamp}</span>
-                  <strong>{entry.source}:</strong> {entry.message}
-                </div>
-              ))
+          <div className="dock-body">
+            {(dockTab === "controls") && (
+              <ControlPanel selectedPlane={selected} onCommand={handleCommand} activeRunway={activeRunway} />
             )}
+            <div className={`radio-log-panel${dockTab === "log" ? "" : " radio-log-desktop"}`}>
+              <div className="radio-log-title">RADIO LOG</div>
+              {radioLog.length === 0 ? (
+                <div className="radio-log-entry">No transmissions yet.</div>
+              ) : (
+                radioLog.slice(-8).reverse().map((entry) => (
+                  <div className="radio-log-entry" key={entry.id}>
+                    <span className="time">{entry.timestamp}</span>
+                    <strong>{entry.source}:</strong> {entry.message}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -937,5 +990,6 @@ export default function ATCv2() {
         </motion.div>
       )}
     </div>
+    </SpeechProvider>
   );
 }

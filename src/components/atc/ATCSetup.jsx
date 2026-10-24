@@ -43,7 +43,7 @@ export default function ATCSetup({
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col items-center justify-start p-6 overflow-y-auto">
+    <div className="w-full h-full bg-background flex flex-col items-center justify-start p-6 overflow-y-auto">
       <div className="w-full max-w-4xl space-y-6 py-6">
         {/* Header */}
         <div className="text-center space-y-2">
