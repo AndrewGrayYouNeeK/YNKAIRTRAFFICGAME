@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { api } from "@/api/client";
+import { createRecord, filterRecords, subscribeRecords, updateRecord } from "@/lib/localStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,27 +13,20 @@ export default function Game() {
   const queryClient = useQueryClient();
   const [gameSession, setGameSession] = useState(null);
   const [showLobby, setShowLobby] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // Get current user
-  useEffect(() => {
-    api.auth.me().then(setCurrentUser).catch(() => setCurrentUser(null));
-  }, []);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["current-game-session"],
     queryFn: async () => {
-      const sessions = await api.entities.GameSession.filter({ status: "active" }, "-created_date", 1);
+      const sessions = await filterRecords("GameSession", { status: "active" }, "-created_date", 1);
       return sessions[0] || null;
     },
     refetchInterval: 2000,
   });
 
-  // Subscribe to real-time game updates
   useEffect(() => {
     if (!session) return;
-    
-    const unsubscribe = api.entities.GameSession.subscribe((event) => {
+
+    const unsubscribe = subscribeRecords("GameSession", (event) => {
       if (event.id === session.id) {
         queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
       }
@@ -43,14 +36,14 @@ export default function Game() {
   }, [session?.id, queryClient]);
 
   const createGameMutation = useMutation({
-    mutationFn: (data) => api.entities.GameSession.create(data),
+    mutationFn: (data) => createRecord("GameSession", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
     },
   });
 
   const updateGameMutation = useMutation({
-    mutationFn: ({ id, data }) => api.entities.GameSession.update(id, data),
+    mutationFn: ({ id, data }) => updateRecord("GameSession", id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
     },
@@ -73,15 +66,12 @@ export default function Game() {
       <MultiplayerLobby
         onStartGame={() => setShowLobby(false)}
         onJoinGame={async (session) => {
-          // Add player as participant
-          if (currentUser) {
-            await api.entities.GameSessionParticipant.create({
-              session_id: session.id,
-              player_email: currentUser.email,
-              player_name: currentUser.full_name,
-              status: "active",
-            });
-          }
+          await createRecord("GameSessionParticipant", {
+            session_id: session.id,
+            player_email: "operator@atc.local",
+            player_name: "ATC Operator",
+            status: "active",
+          });
           setGameSession(session);
           setShowLobby(false);
         }}

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { subscribeRecords } from "@/lib/localStore";
 
 export function useGameSync(sessionId) {
   const queryClient = useQueryClient();
@@ -9,14 +9,13 @@ export function useGameSync(sessionId) {
     if (!sessionId) return;
 
     // Subscribe to game session updates
-    const unsubscribeSession = api.entities.GameSession.subscribe((event) => {
+    const unsubscribeSession = subscribeRecords("GameSession", (event) => {
       if (event.id === sessionId) {
         queryClient.invalidateQueries({ queryKey: ["current-game-session"] });
       }
     });
 
-    // Subscribe to participant updates
-    const unsubscribeParticipants = api.entities.GameSessionParticipant.subscribe((event) => {
+    const unsubscribeParticipants = subscribeRecords("GameSessionParticipant", (event) => {
       if (event.data?.session_id === sessionId) {
         queryClient.invalidateQueries({ queryKey: ["game-participants", sessionId] });
       }

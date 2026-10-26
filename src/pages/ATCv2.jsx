@@ -10,7 +10,7 @@ import HelpSheet from "../components/atc/HelpSheet";
 import TutorialCoach from "../components/atc/TutorialCoach";
 import { SpeechProvider } from "../components/atc/VoiceInput";
 import parseATCCommand from "../lib/voiceCommandParser";
-import { api } from "../api/client";
+import { createRecord, updateRecord } from "../lib/localStore";
 import { getAirport } from "../lib/airports";
 import {
   assessLanding,
@@ -353,7 +353,7 @@ export default function ATCv2() {
     const next = { ...current, ...patch };
     sessionRef.current = next;
     setSession(next);
-    api.entities.ATCSession.update(current.id, patch).catch(() => {});
+    updateRecord("ATCSession", current.id, patch).catch(() => {});
   }, []);
 
   const scoreSession = useCallback((status) => {
@@ -630,7 +630,7 @@ export default function ATCv2() {
   const startTutorial = async () => {
     const field = getAirport("KLAX");
     const runway = field.runways[0];
-    const created = await api.entities.ATCSession.create({
+    const created = await createRecord("ATCSession", {
       status: "active",
       difficulty: field.difficulty,
       level: field.level,
@@ -877,7 +877,7 @@ export default function ATCv2() {
   const restartGame = async () => {
     const field = airportRef.current;
     if (!field) return;
-    const created = await api.entities.ATCSession.create({
+    const created = await createRecord("ATCSession", {
       status: "active",
       difficulty: field.difficulty,
       level: field.level,
