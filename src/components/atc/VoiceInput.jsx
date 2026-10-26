@@ -1,65 +1,80 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 import parseATCCommand from "@/lib/voiceCommandParser";
+import { getSpeechRecognition, speechErrorMessage, unsupportedSpeechMessage } from "@/lib/speechInput";
 
-const RecognitionClass =
-  typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
+const SpeechContext = createContext(null);
 
-export default function VoiceInput({
+function useSpeech() {
+  const speech = useContext(SpeechContext);
+  if (!speech) throw new Error("Mic controls must sit inside SpeechProvider");
+  return speech;
+}
+
+export function SpeechProvider({
+  children,
   onCommand,
-  onTranscript,
   aircraft = [],
   selectedPlane = null,
+  activeRunway = "",
+  example = "",
 }) {
   const recognitionRef = useRef(null);
   const isTransmittingRef = useRef(false);
   const latestInterimRef = useRef("");
   const latestFinalRef = useRef("");
+  const ignoreResultRef = useRef(false);
+  const aircraftRef = useRef(aircraft);
+  const selectedRef = useRef(selectedPlane);
+  const runwayRef = useRef(activeRunway);
+  const exampleRef = useRef(example);
+  const onCommandRef = useRef(onCommand);
+  aircraftRef.current = aircraft;
+  selectedRef.current = selectedPlane;
+  runwayRef.current = activeRunway;
+  exampleRef.current = example;
+  onCommandRef.current = onCommand;
+
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [interim, setInterim] = useState("");
   const [lastLog, setLastLog] = useState(null);
-
-  const playSquelchClick = (open = true) => {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const buffer = ctx.createBuffer(1, 800, ctx.sampleRate);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < channelData.length; i += 1) {
-      channelData[i] = (Math.random() * 2 - 1) * (1 - i / channelData.length);
-    }
-    const src = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = open ? 1800 : 1200;
-    const gain = ctx.createGain();
-    gain.gain.value = 0.18;
-    src.buffer = buffer;
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    src.start();
-    src.stop(ctx.currentTime + 0.05);
-  };
+  const [notice, setNotice] = useState("");
+  const supported = Boolean(getSpeechRecognition());
 
   const processTranscript = () => {
     const transcript = (latestFinalRef.current || latestInterimRef.current || "").trim();
-    if (!transcript) return;
-    const parsed = parseATCCommand(transcript, aircraft, selectedPlane);
-    onTranscript?.(transcript);
-    if (parsed.command) onCommand?.(parsed.command, parsed);
-    setLastLog({ transcript, ...parsed });
-    setInterim("");
     latestInterimRef.current = "";
     latestFinalRef.current = "";
+    setInterim("");
+    if (!transcript) {
+      setNotice((current) => current || speechErrorMessage("no-speech"));
+      return;
+    }
+    const selected = selectedRef.current;
+    const parsed = parseATCCommand(transcript, aircraftRef.current, selected, {
+      runway: selected?.runway || runwayRef.current,
+      callsign: selected?.callsign,
+      example: exampleRef.current,
+    });
+    setNotice("");
+    setLastLog({ transcript, ...parsed });
+    onCommandRef.current?.(parsed.command, parsed);
+  };
+
+  const stopTransmission = () => {
+    if (!isTransmittingRef.current) return;
+    recognitionRef.current?.stop();
   };
 
   const startTransmission = () => {
-    if (!RecognitionClass || isTransmittingRef.current) return;
-    playSquelchClick(true);
-    isTransmittingRef.current = true;
-    setIsTransmitting(true);
-    const recognition = new RecognitionClass();
+    const Recognition = getSpeechRecognition();
+    if (!Recognition || isTransmittingRef.current) return;
+    setNotice("");
+    setLastLog(null);
+    latestInterimRef.current = "";
+    latestFinalRef.current = "";
+    ignoreResultRef.current = false;
+    const recognition = new Recognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
@@ -73,34 +88,53 @@ export default function VoiceInput({
       }
       if (finalTranscript.trim()) latestFinalRef.current = finalTranscript.trim();
       latestInterimRef.current = interimTranscript;
-      setInterim(interimTranscript);
+      setInterim(interimTranscript || latestFinalRef.current);
     };
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
+      const message = speechErrorMessage(event.error);
+      if (message) setNotice(message);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "audio-capture") {
+        ignoreResultRef.current = true;
+      }
+    };
+    recognition.onend = () => {
       isTransmittingRef.current = false;
       setIsTransmitting(false);
+      recognitionRef.current = null;
+      if (!ignoreResultRef.current) processTranscript();
+      ignoreResultRef.current = false;
     };
     recognitionRef.current = recognition;
-    recognition.start();
+    try {
+      recognition.start();
+      isTransmittingRef.current = true;
+      setIsTransmitting(true);
+    } catch {
+      isTransmittingRef.current = false;
+      setIsTransmitting(false);
+      recognitionRef.current = null;
+      setNotice(speechErrorMessage("start-failed"));
+    }
   };
 
-  const stopTransmission = () => {
-    if (!isTransmittingRef.current) return;
-    playSquelchClick(false);
-    isTransmittingRef.current = false;
-    recognitionRef.current?.stop();
-    setIsTransmitting(false);
-    processTranscript();
+  const toggleTransmission = () => {
+    if (isTransmittingRef.current) stopTransmission();
+    else startTransmission();
   };
 
   useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.code !== "Space" || e.repeat) return;
-      e.preventDefault();
+    const typing = (event) => {
+      const tag = event.target?.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || event.target?.isContentEditable;
+    };
+    const onKeyDown = (event) => {
+      if (event.code !== "Space" || event.repeat || typing(event)) return;
+      event.preventDefault();
       startTransmission();
     };
-    const onKeyUp = (e) => {
-      if (e.code !== "Space") return;
-      e.preventDefault();
+    const onKeyUp = (event) => {
+      if (event.code !== "Space" || typing(event)) return;
+      event.preventDefault();
       stopTransmission();
     };
     window.addEventListener("keydown", onKeyDown);
@@ -110,76 +144,61 @@ export default function VoiceInput({
       window.removeEventListener("keyup", onKeyUp);
       recognitionRef.current?.stop();
     };
-  }, [aircraft, selectedPlane, onCommand, onTranscript]);
-
-  if (!RecognitionClass) {
-    return (
-      <div className="bg-black/80 border border-amber-500/40 rounded-xl p-4">
-        <p className="font-mono text-xs text-amber-300">Voice not supported, use keyboard controls.</p>
-      </div>
-    );
-  }
+  }, []);
 
   return (
-    <div className="bg-[#061018] border border-green-500/40 rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-mono text-xs text-green-300">RADIO INPUT</h3>
-        <div className={`font-mono text-[10px] ${isTransmitting ? "text-green-300" : "text-green-700"}`}>
-          {isTransmitting ? "TRANSMITTING" : "STANDBY"}
-        </div>
-      </div>
+    <SpeechContext.Provider value={{
+      supported,
+      isTransmitting,
+      interim,
+      lastLog,
+      notice,
+      toggleTransmission,
+    }}
+    >
+      {children}
+    </SpeechContext.Provider>
+  );
+}
 
-      <button
-        type="button"
-        className={`w-full h-20 rounded-full border-2 font-mono font-bold text-lg flex items-center justify-center gap-2 transition ${
-          isTransmitting
-            ? "bg-green-500/30 border-green-300 text-green-100 shadow-[0_0_20px_rgba(34,197,94,0.55)]"
-            : "bg-green-900/20 border-green-700 text-green-300"
-        }`}
-        onMouseDown={startTransmission}
-        onMouseUp={stopTransmission}
-        onMouseLeave={stopTransmission}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          startTransmission();
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          stopTransmission();
-        }}
-      >
-        <Mic className="w-6 h-6" />
-        PTT
-      </button>
+export function MicButton() {
+  const { supported, isTransmitting, toggleTransmission } = useSpeech();
+  return (
+    <button
+      type="button"
+      className={`mic-btn${isTransmitting ? " listening" : ""}${supported ? "" : " unsupported"}`}
+      data-testid="mic-button"
+      data-coach="voice"
+      data-listening={isTransmitting ? "true" : "false"}
+      aria-pressed={isTransmitting}
+      aria-label={supported ? "Tap to speak a clearance" : "Speech recognition is unavailable"}
+      onClick={toggleTransmission}
+      disabled={!supported}
+    >
+      <Mic className="mic-icon" aria-hidden="true" />
+      {isTransmitting ? "STOP" : "TAP MIC"}
+    </button>
+  );
+}
 
-      {isTransmitting && (
-        <div className="flex gap-1 h-5 items-end">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-green-400/80 w-1 rounded-sm animate-pulse"
-              style={{ height: `${35 + ((i * 17) % 60)}%`, animationDelay: `${i * 0.06}s` }}
-            />
-          ))}
-        </div>
+export function SpeechStatus() {
+  const { supported, isTransmitting, interim, lastLog, notice } = useSpeech();
+  return (
+    <div className="voice-panel" data-testid="voice-panel" data-coach="voice-status">
+      {!supported && <p className="voice-note">{unsupportedSpeechMessage()}</p>}
+      {supported && isTransmitting && (
+        <p className="voice-live">Listening: {interim ? `${interim}` : "speak a clearance"}</p>
       )}
-
-      <div className="rounded-md border border-green-900 bg-black/70 p-2 min-h-14">
-        <p className="font-mono text-[11px] text-green-300">
-          {interim ? `${interim}...` : "Hold PTT (or Space) to transmit"}
-        </p>
-      </div>
-
+      {notice && <p className="voice-note">{notice}</p>}
       {lastLog && (
-        <div className="rounded-md border border-green-700/60 bg-black/80 p-2 space-y-1">
-          <p className="font-mono text-[11px] text-green-300">TX: {lastLog.transcript}</p>
-          <p className="font-mono text-[11px] text-green-200">
-            CMD: {lastLog.command ? JSON.stringify(lastLog.command) : "UNRECOGNIZED"}
-          </p>
-          <p className={`font-mono text-[10px] ${lastLog.confidence < 0.6 ? "text-amber-300" : "text-green-300"}`}>
-            {lastLog.confidence < 0.6 ? "SAY AGAIN" : "RECOGNIZED"} ({lastLog.confidence.toFixed(2)})
-          </p>
-        </div>
+        <>
+          <p>Heard: {lastLog.transcript}</p>
+          <p>Understood: {lastLog.understood || "not recognized"}</p>
+          {lastLog.suggestion && <p className="miss">Try: {lastLog.suggestion}</p>}
+        </>
+      )}
+      {supported && !isTransmitting && !notice && !lastLog && (
+        <p>Mic ready</p>
       )}
     </div>
   );

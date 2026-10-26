@@ -28,16 +28,13 @@ export default function AirportSelector({ totalLandings = 0, onSelect }) {
         return (
           <motion.button
             key={airport.id}
+            data-testid={`airport-${airport.id}`}
             disabled={isLocked}
             onClick={() => !isLocked && onSelect(airport)}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.08 }}
-            className={`w-full text-left rounded-xl border p-4 transition-all ${
-              isLocked
-                ? "bg-card/30 border-border/40 opacity-50 cursor-not-allowed"
-                : "bg-card border-border hover:border-primary/40 hover:bg-card/80 cursor-pointer"
-            }`}
+            className={`airport-card${isLocked ? " locked" : ""}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
