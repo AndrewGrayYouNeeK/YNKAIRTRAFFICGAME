@@ -1,59 +1,46 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { api } from "@/api/client";
+import { generateId } from "@/lib/localStore";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
+
+const SUPERVISOR_RESPONSES = [
+  "Maintain current separation. Monitor the inbound traffic on final.",
+  "Consider vectoring that aircraft to a holding pattern until weather clears.",
+  "Emergency acknowledged. Priority handling is in effect for that callsign.",
+  "Runway assignment looks good. Continue monitoring wake turbulence separation.",
+  "Recommend reducing arrival rate if separation losses continue.",
+];
 
 export default function ATCSupervisor({ session }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversation, setConversation] = useState(null);
 
-  useEffect(() => {
-    // Initialize agent conversation
-    const initConversation = async () => {
-      const conv = await api.agents.createConversation({
-        agent_name: "atc_supervisor",
-        metadata: {
-          name: `ATC Session ${session.id}`,
-          session_id: session.id,
-          difficulty: session.difficulty,
-          level: session.level,
-        },
-      });
-      setConversation(conv);
+  const sendMessage = () => {
+    const content = input.trim();
+    if (!content || loading) return;
+
+    const userMessage = {
+      id: generateId(),
+      role: "user",
+      content,
     };
-
-    initConversation();
-  }, [session]);
-
-  useEffect(() => {
-    if (!conversation) return;
-
-    // Subscribe to conversation updates
-    const unsubscribe = api.agents.subscribeToConversation(conversation.id, (data) => {
-      setMessages(data.messages || []);
-    });
-
-    return unsubscribe;
-  }, [conversation]);
-
-  const sendMessage = async () => {
-    if (!input.trim() || !conversation) return;
-
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
-    try {
-      await api.agents.addMessage(conversation, {
-        role: "user",
-        content: input,
-      });
-      setInput("");
-    } catch (error) {
-      console.error("Failed to send message:", error);
-    } finally {
+    window.setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "assistant",
+          content: SUPERVISOR_RESPONSES[Math.floor(Math.random() * SUPERVISOR_RESPONSES.length)],
+          session_id: session?.id,
+        },
+      ]);
       setLoading(false);
-    }
+    }, 600);
   };
 
   return (

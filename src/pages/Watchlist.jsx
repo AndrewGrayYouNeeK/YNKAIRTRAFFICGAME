@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api } from "@/api/client";
+import { createRecord, deleteRecord, listRecords } from "@/lib/localStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +27,11 @@ export default function Watchlist() {
 
   const { data: watchlist = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
-    queryFn: () => api.entities.Watchlist.list("-created_date", 100),
+    queryFn: () => listRecords("Watchlist", "-created_date", 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => api.entities.Watchlist.create(data),
+    mutationFn: (data) => createRecord("Watchlist", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
       setNewEntry({ drone_id: "", model: "", reason: "", priority: "high", notes: "" });
@@ -40,7 +40,7 @@ export default function Watchlist() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.entities.Watchlist.delete(id),
+    mutationFn: (id) => deleteRecord("Watchlist", id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },

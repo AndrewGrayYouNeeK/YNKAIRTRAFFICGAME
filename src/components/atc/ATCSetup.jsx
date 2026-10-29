@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/api/client";
+import { createRecord, listRecords, sumField } from "@/lib/localStore";
 import { Plane, Globe } from "lucide-react";
 import AirportSelector from "./AirportSelector";
 import { useQuery } from "@tanstack/react-query";
@@ -17,15 +17,15 @@ export default function ATCSetup({
   // Get total successful landings across all past sessions
   const { data: pastSessions = [] } = useQuery({
     queryKey: ["atc-past-sessions"],
-    queryFn: () => api.entities.ATCSession.list("-created_date", 200),
+    queryFn: () => listRecords("ATCSession", "-created_date", 200),
   });
 
-  const totalLandings = pastSessions.reduce((sum, s) => sum + (s.successful_landings || 0), 0);
+  const totalLandings = sumField(pastSessions, "successful_landings");
 
   const startGame = async () => {
     if (!selectedAirport) return;
     setLoading(true);
-    const session = await api.entities.ATCSession.create({
+    const session = await createRecord("ATCSession", {
       status: "active",
       difficulty: selectedAirport.difficulty,
       level: selectedAirport.level,

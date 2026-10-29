@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Eye, ChevronLeft, Crosshair, Zap, Users, Zap as ZapIcon } from "lucide-react";
-import { api } from "@/api/client";
+import { filterRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";
 import CasperBonusRound from "./CasperBonusRound";
@@ -26,7 +26,7 @@ export default function ARMode({ session, onUpdate }) {
   // Fetch other players in session
   const { data: participants = [] } = useQuery({
     queryKey: ["game-participants", session.id],
-    queryFn: () => api.entities.GameSessionParticipant.filter({ session_id: session.id }),
+    queryFn: () => filterRecords("GameSessionParticipant", { session_id: session.id }),
     refetchInterval: 2000,
   });
 

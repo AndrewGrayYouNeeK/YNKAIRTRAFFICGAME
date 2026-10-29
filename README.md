@@ -38,4 +38,4 @@ npm run build
 - Tailwind CSS
 - Recharts / Leaflet
 
-Data is persisted in the browser via localStorage, so the app runs fully offline after the first load.
+Airport unlocks, session scores, detection history, and the tutorial choice are stored in the browser with localStorage. The app does not require an account or login, and it runs fully offline after the first load.
