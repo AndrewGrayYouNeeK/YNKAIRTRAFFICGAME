@@ -1,7 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Capacitor } from '@capacitor/core'
 import App from '@/App.jsx'
+import { initNativeShell } from '@/lib/nativeShell'
 import '@/index.css'
+
+initNativeShell()
 
 function syncVisualViewport() {
   const viewport = window.visualViewport
@@ -20,6 +24,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
 )
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 }

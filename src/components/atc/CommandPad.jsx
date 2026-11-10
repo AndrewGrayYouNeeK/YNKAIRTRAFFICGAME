@@ -1,5 +1,6 @@
 import React from "react";
 import { MicButton, SpeechStatus } from "./VoiceInput";
+import { vibrate } from "../../lib/audioManager";
 import { altitudeCommand, headingCommand, speedCommand } from "../../lib/commandPad";
 
 const TURNS = [
@@ -27,6 +28,7 @@ export default function CommandPad({
 
   const send = (command) => {
     if (!armed || !command) return;
+    vibrate(12);
     onCommand(command);
   };
 
@@ -124,7 +126,15 @@ export default function CommandPad({
         </button>
       </div>
 
-      <form className="command-box" data-testid="command-form" data-coach="command" onSubmit={onSubmit}>
+      <form
+        className="command-box"
+        data-testid="command-form"
+        data-coach="command"
+        onSubmit={(event) => {
+          vibrate(12);
+          onSubmit(event);
+        }}
+      >
         <div className="command-row">
           <input
             id="atc-command"

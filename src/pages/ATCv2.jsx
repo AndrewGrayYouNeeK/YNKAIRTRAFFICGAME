@@ -140,13 +140,16 @@ const ATC_STYLES = `
 }
 @media (max-height: 520px) and (min-width: 640px) {
   .atc-header { max-height: 36px; }
-  .atc-grid { grid-template-columns: minmax(0, 1fr) min(268px, 46vw); grid-template-rows: minmax(0, 1fr); gap: 6px; padding: 6px; }
+  .airport-name { font-size: 14px; }
+  .atc-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(96px, 1fr) auto; gap: 4px; padding: 4px; }
+  .radar-section { grid-template-columns: minmax(0, 1fr); }
+  .altitude-ladder { display: none; }
   .pad-btn, .command-row input, .command-row button, .mic-btn { min-height: 44px; height: 44px; }
-  .pad-btn { font-size: 11px; padding: 0 3px; }
-  .pad-btn.land { font-size: 10px; letter-spacing: 0; }
-  .pad-status { height: 16px; }
+  .pad-btn { font-size: 12px; padding: 0 4px; }
+  .pad-btn.land { font-size: 11px; letter-spacing: 0; }
+  .pad-status { display: none; }
   .voice-panel { display: none; }
-  .command-pad { gap: 3px; padding: 4px; }
+  .command-pad { gap: 3px; padding: 4px 4px max(6px, env(safe-area-inset-bottom)); }
   .tutorial-card { top: calc(env(safe-area-inset-top) + 40px); left: 8px; right: auto; width: min(360px, 48vw); max-height: 84px; }
 }
 @media (max-width: 420px) {
@@ -275,6 +278,30 @@ export default function ATCv2() {
     const timer = setTimeout(() => setTouchdown(null), 2500);
     return () => clearTimeout(timer);
   }, [touchdown]);
+
+  useEffect(() => {
+    if (gameState !== GAME_STATE.ACTIVE || typeof navigator === "undefined" || !navigator.wakeLock) {
+      return undefined;
+    }
+    let lock = null;
+    let cancelled = false;
+    const request = () => {
+      navigator.wakeLock.request("screen").then((next) => {
+        if (cancelled) next.release();
+        else lock = next;
+      }).catch(() => {});
+    };
+    request();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") request();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      lock?.release?.();
+    };
+  }, [gameState]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return undefined;
