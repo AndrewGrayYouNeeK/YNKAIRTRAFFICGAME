@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <rect width="2732" height="2732" fill="#07140c"/>
+  
+  <g>
+    <circle cx="1366" cy="1180" r="460" fill="none" stroke="#1f6b45" stroke-width="19.514285714285716"/>
+    <circle cx="1366" cy="1180" r="303.6" fill="none" stroke="#2f8f5c" stroke-width="15.177777777777777"/>
+    <circle cx="1366" cy="1180" r="151.8" fill="none" stroke="#3dff9a" stroke-width="15.177777777777777"/>
+    <line x1="906" y1="1180" x2="1826" y2="1180" stroke="#1f6b45" stroke-width="9.757142857142858" opacity="0.7"/>
+    <line x1="1366" y1="720" x2="1366" y2="1640" stroke="#1f6b45" stroke-width="9.757142857142858" opacity="0.7"/>
+    <path d="M1366 1180 L1366 720 A460 460 0 0 1 1743.2 917.8 Z" fill="#3dff9a" opacity="0.28"/>
+    <line x1="1366" y1="1180" x2="1724.8" y2="940.8" stroke="#d6ff78" stroke-width="30.355555555555554" stroke-linecap="round"/>
+    <circle cx="1366" cy="1180" r="39.02857142857143" fill="#d6ff78"/>
+    <g transform="translate(1559.2 1051.2) rotate(-32)">
+      <polygon points="0,-97.57142857142857 39.02857142857143,75.88888888888889 0,49.67272727272727 -39.02857142857143,75.88888888888889" fill="#ffc14a"/>
+    </g>
+    
+  </g>
+
+  <text x="1366" y="1820" text-anchor="middle" font-family="JetBrains Mono, DejaVu Sans Mono, monospace" font-size="132" font-weight="700" fill="#d6ff78" letter-spacing="18">YNK AIR TRAFFIC</text>
+  <text x="1366" y="1940" text-anchor="middle" font-family="Inter, DejaVu Sans, sans-serif" font-size="64" fill="#9dccb0" letter-spacing="16">YOUNEEK</text>
+</svg>

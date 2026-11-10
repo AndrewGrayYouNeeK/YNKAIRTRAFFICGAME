@@ -1,8 +1,9 @@
-# App Icons Placeholder
+# YNK Air Traffic icons
 
-Replace these placeholder files with real PNG app icons before store submission:
+These PNGs are generated from `scripts/generate-brand-assets.mjs`.
 
-- `icon-192.png` (192x192)
-- `icon-512.png` (512x512)
+- `icon-192.png` and `icon-512.png` are the installed web icons.
+- `apple-touch-icon.png` is the home-screen icon for Safari.
+- The 1024 marketing icon and the native launch images live in `assets/` and `docs/app-store/`.
 
-Recommended theme: radar scope + aircraft silhouette on dark ATC background.
+Regenerate with `npm run assets:brand`, then `npx @capacitor/assets generate --ios --android` after the native projects exist.

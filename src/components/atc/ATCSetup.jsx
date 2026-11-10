@@ -57,6 +57,9 @@ export default function ATCSetup({
           <Button type="button" variant="outline" data-testid="replay-tutorial" onClick={onStartTutorial}>
             Replay the guided mission
           </Button>
+          <p className="text-xs text-muted-foreground">
+            <a href="/privacy.html">Privacy policy</a>
+          </p>
         </div>
 
         {/* Airport selector */}

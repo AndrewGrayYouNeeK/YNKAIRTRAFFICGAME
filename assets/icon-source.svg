@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#07140c"/>
+  
+  <g>
+    <circle cx="512" cy="470" r="300" fill="none" stroke="#1f6b45" stroke-width="7.314285714285714"/>
+    <circle cx="512" cy="470" r="198" fill="none" stroke="#2f8f5c" stroke-width="5.688888888888889"/>
+    <circle cx="512" cy="470" r="99" fill="none" stroke="#3dff9a" stroke-width="5.688888888888889"/>
+    <line x1="212" y1="470" x2="812" y2="470" stroke="#1f6b45" stroke-width="3.657142857142857" opacity="0.7"/>
+    <line x1="512" y1="170" x2="512" y2="770" stroke="#1f6b45" stroke-width="3.657142857142857" opacity="0.7"/>
+    <path d="M512 470 L512 170 A300 300 0 0 1 758 299 Z" fill="#3dff9a" opacity="0.28"/>
+    <line x1="512" y1="470" x2="746" y2="314" stroke="#d6ff78" stroke-width="11.377777777777778" stroke-linecap="round"/>
+    <circle cx="512" cy="470" r="14.628571428571428" fill="#d6ff78"/>
+    <g transform="translate(638 386) rotate(-32)">
+      <polygon points="0,-36.57142857142857 14.628571428571428,28.444444444444443 0,18.618181818181817 -14.628571428571428,28.444444444444443" fill="#ffc14a"/>
+    </g>
+    <text x="512" y="882.64" text-anchor="middle" font-family="JetBrains Mono, DejaVu Sans Mono, monospace" font-size="87" font-weight="700" fill="#d6ff78" letter-spacing="12">YNK</text>
+  </g>
+
+</svg>
