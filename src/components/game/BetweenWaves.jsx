@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Hammer, Lock, Zap, Shield, TrendingUp, Play } from "lucide-react";
 
 export default function BetweenWaves({ session, onUpdate }) {

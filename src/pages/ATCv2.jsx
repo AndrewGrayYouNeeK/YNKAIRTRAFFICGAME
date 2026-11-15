@@ -15,14 +15,16 @@ import { getAirport } from "../lib/airports";
 import {
   assessLanding,
   calculateTrajectory,
+  chooseInboundSpawn,
   clampDelta,
   createInboundAircraft,
-  findConflicts,
   guideApproach,
   keepOnLessonTrack,
+  mergeCommandedAircraft,
   placeOnExtendedCenterline,
   selectActiveRunway,
   updateAircraftPhysics,
+  updateSeparationWatch,
 } from "../lib/atcPhysics";
 import {
   TUTORIAL_STEPS,
@@ -33,9 +35,10 @@ import {
   readTutorialStatus,
   shouldOfferTutorial,
 } from "../lib/tutorial";
-import { applyEmergencyEffects, generateEmergency } from "../lib/emergencySystem";
+import { applyEmergencyEffects, generateEmergency, settleEmergency } from "../lib/emergencySystem";
 import { sounds, speakText, vibrate } from "../lib/audioManager";
-import { addScoreToLeaderboard, calculateScore } from "../lib/scoringEngine";
+import { calculateScore, recordShiftScore } from "../lib/scoringEngine";
+import { pauseForBackground } from "../lib/sessionControl";
 import { computeWeatherEffects, fetchAirportWeather } from "../lib/weatherEngine";
 
 const GAME_STATE = {
@@ -54,7 +57,7 @@ const EMPTY_STATS = {
 };
 
 const ATC_STYLES = `
-.atc-v2-container { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: radial-gradient(circle at 50% 0%, #10281c, #050a08 62%); display: flex; flex-direction: column; overflow: hidden; font-family: ui-monospace, monospace; color: #d7ffe8; }
+.atc-v2-container { --safe-top: env(safe-area-inset-top, 0px); --safe-right: env(safe-area-inset-right, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); position: fixed; top: var(--app-top, 0px); left: 0; right: 0; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); box-sizing: border-box; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); background: radial-gradient(circle at 50% 0%, #10281c, #050a08 62%); display: flex; flex-direction: column; overflow: hidden; font-family: ui-monospace, monospace; color: #d7ffe8; }
 .atc-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid rgba(120, 255, 170, 0.25); background: rgba(4, 12, 8, 0.94); flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; overflow: hidden; max-height: 48px; }
 .header-left,.header-right { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
 .airport-name { font-size: 16px; font-weight: bold; color: #b6ff8a; margin: 0; white-space: nowrap; letter-spacing: 0.06em; }
@@ -101,14 +104,14 @@ const ATC_STYLES = `
 .touchdown-banner { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 8px 16px; border-radius: 999px; background: rgba(255, 214, 102, 0.95); color: #1a1404; font-weight: 800; letter-spacing: 0.08em; font-size: 16px; }
 .gameover-stat { margin: 8px 0; color: #ffb4b4; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 rgba(255, 0, 0, 0.45); } 50% { box-shadow: 0 0 12px rgba(255, 70, 70, 0.55); } }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--safe-top, env(safe-area-inset-top, 0px)) var(--safe-right, env(safe-area-inset-right, 0px)) var(--safe-bottom, env(safe-area-inset-bottom, 0px)) var(--safe-left, env(safe-area-inset-left, 0px)); }
 .modal { background: radial-gradient(circle at 50% 0%, #163528, #07110d 70%); border: 1px solid rgba(140, 255, 186, 0.45); border-radius: 12px; padding: 24px; max-width: min(520px, 100%); max-height: min(80dvh, calc(var(--app-height, 100dvh) - 24px)); display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); text-align: center; overflow: auto; color: #e7fff2; }
 .briefing-content { text-align: left; font-size: 13px; margin: 16px 0; line-height: 1.55; flex: 1; overflow-y: auto; }
 .btn-start { margin-top: 16px; min-height: 48px; padding: 12px 24px; background: linear-gradient(135deg, #d6ff78, #7dffa8); border: none; border-radius: 8px; color: #07140c; font-family: ui-monospace, monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
 .tutorial-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 .tutorial-ring { position: fixed; border: 2px solid #ffe14a; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); pointer-events: none; }
 .tutorial-ring-secondary { box-shadow: none; border-style: dashed; }
-.tutorial-card { position: fixed; left: 16px; top: calc(env(safe-area-inset-top) + 56px); width: min(420px, calc(100vw - 400px)); max-height: 168px; overflow: hidden; pointer-events: auto; background: rgba(6, 16, 12, 0.96); border: 1px solid #ffe14a; border-radius: 12px; padding: 10px 12px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
+.tutorial-card { position: fixed; left: calc(var(--safe-left, env(safe-area-inset-left, 0px)) + 16px); top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 56px); width: min(420px, calc(100vw - 400px)); max-height: 168px; overflow: auto; pointer-events: auto; background: rgba(6, 16, 12, 0.96); border: 1px solid #ffe14a; border-radius: 12px; padding: 10px 12px; color: #e8fff4; text-align: left; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
 .tutorial-card.open { max-height: min(42dvh, 360px); overflow: auto; }
 .tutorial-card h2 { margin: 0 0 4px; font-size: 15px; color: #ffe14a; }
 .tutorial-card p { margin: 0 0 4px; font-size: 12px; line-height: 1.35; color: #d5fff0; }
@@ -123,7 +126,7 @@ const ATC_STYLES = `
 .tutorial-actions .btn-start, .tutorial-actions .btn-shift, .tutorial-actions .btn-help { margin-top: 0; min-height: 36px; }
 .help-overlay { z-index: 1200; }
 .help-modal { text-align: left; width: min(520px, 92vw); }
-.atc-setup { background: radial-gradient(circle at 50% -10%, #143628, #050a08 60%); color: #e7fff2; font-family: ui-monospace, monospace; }
+.atc-setup { --safe-top: env(safe-area-inset-top, 0px); --safe-right: env(safe-area-inset-right, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); background: radial-gradient(circle at 50% -10%, #143628, #050a08 60%); color: #e7fff2; font-family: ui-monospace, monospace; height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh); overflow-y: auto; box-sizing: border-box; padding: calc(var(--safe-top) + 12px) calc(var(--safe-right) + 12px) calc(var(--safe-bottom) + 16px) calc(var(--safe-left) + 12px); }
 .atc-setup h1, .atc-setup h2 { letter-spacing: 0.06em; }
 .airport-card { width: 100%; text-align: left; border-radius: 12px; border: 1px solid rgba(140, 255, 186, 0.28); background: rgba(6, 18, 12, 0.92); padding: 14px; color: inherit; min-height: 88px; }
 .airport-card.locked { opacity: 0.5; }
@@ -139,18 +142,26 @@ const ATC_STYLES = `
   .tutorial-card.open { max-height: 34dvh; }
 }
 @media (max-height: 520px) and (min-width: 640px) {
-  .atc-header { max-height: 36px; }
-  .airport-name { font-size: 14px; }
-  .atc-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(96px, 1fr) auto; gap: 4px; padding: 4px; }
+  .atc-header { max-height: 32px; padding: 2px 6px; }
+  .airport-name { font-size: 13px; }
+  .wind-indicator { display: none; }
+  .btn-pause, .btn-shift, .btn-help { min-height: 32px; padding: 4px 6px; }
+  .atc-grid { grid-template-columns: minmax(0, 1fr) minmax(300px, 42vw); grid-template-rows: minmax(0, 1fr); gap: 4px; padding: 4px; }
   .radar-section { grid-template-columns: minmax(0, 1fr); }
   .altitude-ladder { display: none; }
+  .command-pad { gap: 3px; padding: 4px; overflow: hidden; }
+  .pad-title { min-height: 16px; }
+  .pad-btn, .command-row input, .command-row button, .mic-btn { min-height: 48px; height: 48px; }
+  .pad-btn { font-size: 13px; padding: 0 4px; }
+  .pad-btn.land { font-size: 12px; letter-spacing: 0; }
+  .pad-status { display: block; height: auto; max-height: 18px; }
+  .pad-status > p { display: none; }
+  .voice-panel { display: block; height: auto; max-height: 16px; }
+  .tutorial-card { top: auto; bottom: calc(var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 8px); left: calc(var(--safe-left, env(safe-area-inset-left, 0px)) + 8px); right: auto; width: min(220px, 28vw); max-height: 96px; overflow: auto; }
+  .tutorial-card.open { max-height: min(160px, 42dvh); }
+}
+@media (max-height: 360px) and (min-width: 640px) {
   .pad-btn, .command-row input, .command-row button, .mic-btn { min-height: 44px; height: 44px; }
-  .pad-btn { font-size: 12px; padding: 0 4px; }
-  .pad-btn.land { font-size: 11px; letter-spacing: 0; }
-  .pad-status { display: none; }
-  .voice-panel { display: none; }
-  .command-pad { gap: 3px; padding: 4px 4px max(6px, env(safe-area-inset-bottom)); }
-  .tutorial-card { top: calc(env(safe-area-inset-top) + 40px); left: 8px; right: auto; width: min(360px, 48vw); max-height: 84px; }
 }
 @media (max-width: 420px) {
   .airport-name { font-size: 14px; }
@@ -255,6 +266,8 @@ export default function ATCv2() {
   const scopeClickConsumedRef = useRef(false);
   const freezeRef = useRef(false);
   const commandRef = useRef(null);
+  const commandEpochRef = useRef(0);
+  const uiPublishRef = useRef(0);
 
   gameStateRef.current = gameState;
   windRef.current = wind;
@@ -385,11 +398,10 @@ export default function ATCv2() {
 
   const scoreSession = useCallback((status) => {
     const stats = statsSnapshot(statsRef.current, separationRef.current);
-    const nextScore = calculateScore(stats);
+    const nextScore = recordShiftScore("ATC Operator", stats, status);
     setScore(nextScore);
     setLandings(stats.successful_landings);
     setSeparationCount(stats.separationViolations);
-    addScoreToLeaderboard("ATC Operator", nextScore, stats);
     publishSession({ ...stats, score: nextScore, ...(status ? { status } : {}) });
     if (status === "completed") {
       queryClientRef.current.invalidateQueries({ queryKey: ["atc-past-sessions"] });
@@ -425,6 +437,7 @@ export default function ATCv2() {
         setActiveRunway(runway);
       }
 
+      const commandEpoch = commandEpochRef.current;
       let planes = aircraftRef.current.map((plane) => ({ ...plane }));
       const landedNow = [];
       const missedNow = [];
@@ -460,7 +473,9 @@ export default function ATCv2() {
       });
 
       planes = planes.filter((plane) => plane.status !== "landed");
-      const { separations, collisions } = findConflicts(planes);
+      const watched = updateSeparationWatch(activePairsRef.current, planes);
+      const { separations, collisions, fresh } = watched;
+      activePairsRef.current = watched.active;
       const violating = new Set();
       separations.forEach((pair) => {
         violating.add(pair.a.id);
@@ -475,13 +490,6 @@ export default function ATCv2() {
         plane.separationViolation = violating.has(plane.id);
         plane.collisionWarning = colliding.has(plane.id);
       });
-
-      const nextPairs = new Set(separations.map((pair) => [pair.a.id, pair.b.id].sort().join("|")));
-      const fresh = [];
-      nextPairs.forEach((key) => {
-        if (!activePairsRef.current.has(key)) fresh.push(key);
-      });
-      activePairsRef.current = nextPairs;
       if (fresh.length > 0) {
         separationRef.current += fresh.length;
         setSeparationCount(separationRef.current);
@@ -489,39 +497,59 @@ export default function ATCv2() {
         sounds.separated();
       }
 
-      spawnTimer += rawDt;
+      const clockDt = clampDelta(rawDt || 0.016);
+      spawnTimer += clockDt;
       const maxAircraft = sessionRef.current?.max_aircraft || field?.maxAircraft || 4;
       if (!lesson && spawnTimer > 26 && planes.length < maxAircraft) {
-        spawnTimer = 0;
         const nextIndex = aircraftCountRef.current;
-        aircraftCountRef.current += 1;
-        const arrival = createInboundAircraft(nextIndex, field, runway, 26 + (nextIndex % 3) * 4);
-        planes.push(arrival);
-        sounds.planeContact();
-        logRef.current("ATC", `${arrival.callsign} contact approach.`);
+        const arrival = chooseInboundSpawn(planes, field, runway, nextIndex);
+        if (arrival) {
+          spawnTimer = 0;
+          aircraftCountRef.current += 1;
+          planes.push(arrival);
+          sounds.planeContact();
+          logRef.current("ATC", `${arrival.callsign} contact approach.`);
+        } else {
+          spawnTimer = 20;
+        }
       }
 
-      emergencyTimer += rawDt;
+      emergencyTimer += clockDt;
       if (!lesson && emergencyTimer > 45 && !emergencyRef.current && planes.length > 0) {
         emergencyTimer = 0;
         const nextEmergency = generateEmergency(planes.length);
         const target = planes.find((plane) => !plane.emergency);
         if (nextEmergency && target) {
-          applyEmergencyEffects(target, nextEmergency);
-          target.emergency = nextEmergency;
-          emergencyRef.current = nextEmergency;
-          setEmergency(nextEmergency);
-          statsRef.current.emergencies_handled += 1;
+          const declared = { ...nextEmergency, planeId: target.id };
+          applyEmergencyEffects(target, declared);
+          target.emergency = declared;
+          emergencyRef.current = declared;
+          setEmergency(declared);
           sounds.emergencyAlert();
           vibrate([200, 100, 200]);
-          logRef.current("ATC", `${target.callsign} ${nextEmergency.message}`);
+          logRef.current("ATC", `${target.callsign} ${declared.message}`);
         }
       }
 
+      if (commandEpochRef.current !== commandEpoch) {
+        planes = mergeCommandedAircraft(planes, aircraftRef.current);
+      }
       aircraftRef.current = planes;
-      setAircraft(planes);
+      const publishNow = performance.now();
+      const forceUi = landedNow.length > 0 || missedNow.length > 0 || fresh.length > 0 || collisions.length > 0;
+      if (forceUi || publishNow - uiPublishRef.current >= 120) {
+        uiPublishRef.current = publishNow;
+        setAircraft(planes);
+      }
 
       landedNow.forEach((plane) => {
+        const settled = settleEmergency(emergencyRef.current, plane, true);
+        if (settled.handled) {
+          statsRef.current.emergencies_handled += 1;
+          emergencyRef.current = null;
+          setEmergency(null);
+          emergencyTimer = 0;
+        }
         statsRef.current.successful_landings += 1;
         sounds.landed();
         setTouchdown({ callsign: plane.callsign, at: performance.now() });
@@ -725,12 +753,15 @@ export default function ATCv2() {
   };
 
   const applyToAircraft = (targetId, recipe) => {
+    commandEpochRef.current += 1;
     const next = aircraftRef.current.map((plane) => (plane.id === targetId ? recipe(plane) : plane));
     aircraftRef.current = next;
+    uiPublishRef.current = performance.now();
     setAircraft(next);
   };
 
   const handleCommand = (cmd) => {
+    if (gameStateRef.current !== GAME_STATE.ACTIVE) return;
     if (!cmd?.type) return;
     const planes = aircraftRef.current;
     const byCallsign = cmd.callsign
@@ -811,6 +842,16 @@ export default function ATCv2() {
     advanceTutorialEvent({ type: "command", command: cmd });
   };
 
+  const dispatchCommand = (commandOrFactory) => {
+    if (typeof commandOrFactory === "function") {
+      const plane = aircraftRef.current.find((item) => item.id === selectedIdRef.current);
+      if (!plane) return;
+      handleCommand(commandOrFactory(plane));
+      return;
+    }
+    handleCommand(commandOrFactory);
+  };
+
   const handleVoiceCommand = (cmd, parsedResult) => {
     if (parsedResult) setCommandFeedback(parsedResult);
     if (!cmd) return;
@@ -842,7 +883,7 @@ export default function ATCv2() {
     setCommandText("");
   };
 
-  commandRef.current = handleCommand;
+  commandRef.current = dispatchCommand;
 
   useEffect(() => {
     const typing = (event) => {
@@ -893,8 +934,33 @@ export default function ATCv2() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  useEffect(() => {
+    const pauseIfHidden = () => {
+      const next = pauseForBackground(gameStateRef.current, {
+        active: GAME_STATE.ACTIVE,
+        paused: GAME_STATE.PAUSED,
+      });
+      if (!next.automatic) return;
+      gameStateRef.current = next.state;
+      setGameState(next.state);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") pauseIfHidden();
+    };
+    const onAppState = (event) => {
+      if (event.detail?.isActive === false) pauseIfHidden();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("ynk-app-state", onAppState);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("ynk-app-state", onAppState);
+    };
+  }, []);
+
   const togglePause = () => {
     setGameState((prev) => {
+      if (prev !== GAME_STATE.ACTIVE && prev !== GAME_STATE.PAUSED) return prev;
       const next = prev === GAME_STATE.ACTIVE ? GAME_STATE.PAUSED : GAME_STATE.ACTIVE;
       gameStateRef.current = next;
       return next;
@@ -968,6 +1034,7 @@ export default function ATCv2() {
         data-state={gameState}
         data-active-runway={activeRunway}
         data-tutorial-step={tutorialComplete ? "complete" : (TUTORIAL_STEPS[tutorialIndex]?.id || "off")}
+        data-separations={separationCount}
         data-aircraft={JSON.stringify(telemetry)}
         hidden
       />
@@ -999,7 +1066,7 @@ export default function ATCv2() {
         <div className="header-right">
           <button type="button" className="btn-help" data-testid="help-button" onClick={() => setHelpOpen(true)}>HELP</button>
           <button type="button" className="btn-shift" onClick={finishAndLeave}>AIRPORTS</button>
-          <button type="button" className="btn-pause" onClick={togglePause}>
+          <button type="button" className="btn-pause" data-testid="pause-button" onClick={togglePause}>
             {gameState === GAME_STATE.PAUSED ? "RESUME" : "PAUSE"}
           </button>
         </div>
@@ -1008,6 +1075,7 @@ export default function ATCv2() {
       <div className="atc-grid">
         <div className="radar-section">
           <AtcRadarV2
+            liveAircraftRef={aircraftRef}
             aircraft={aircraft}
             wind={wind}
             selectedPlane={selected}
@@ -1039,7 +1107,7 @@ export default function ATCv2() {
           <CommandPad
             selectedPlane={selected}
             activeRunway={activeRunway}
-            onCommand={handleCommand}
+            onCommand={dispatchCommand}
             commandText={commandText}
             onCommandText={setCommandText}
             onSubmit={submitTypedCommand}
@@ -1090,6 +1158,16 @@ export default function ATCv2() {
             <button type="button" className="btn-start" data-testid="start-sim" onClick={startGame}>START SIMULATION</button>
           </motion.div>
         </motion.div>
+      )}
+
+      {gameState === GAME_STATE.PAUSED && (
+        <div className="modal-overlay" data-testid="paused-overlay">
+          <div className="modal">
+            <h2>PAUSED</h2>
+            <p>The scope is frozen. Aircraft hold their last clearance until you resume.</p>
+            <button type="button" className="btn-start" data-testid="resume-sim" onClick={togglePause}>RESUME</button>
+          </div>
+        </div>
       )}
 
       {gameState === GAME_STATE.GAMEOVER && (

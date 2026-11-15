@@ -121,7 +121,7 @@ export default function WeatherMachine({ airport, weatherIntensity, onIntensityC
   );
 }
 
-function StatChip({ icon: Icon, label, value, warn }) {
+function StatChip({ icon: Icon, label, value, warn = false }) {
   return (
     <div className={`rounded-lg p-2 border ${warn ? "bg-red-900/20 border-red-500/30" : "bg-secondary/50 border-border"}`}>
       <div className="flex items-center gap-1 mb-0.5">

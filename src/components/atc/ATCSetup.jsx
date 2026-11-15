@@ -8,8 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 export default function ATCSetup({
   onSessionCreated,
   showTutorialOffer = false,
-  onStartTutorial,
-  onDismissTutorial,
+  onStartTutorial = () => {},
+  onDismissTutorial = () => {},
 }) {
   const [selectedAirport, setSelectedAirport] = useState(null);
   const [loading, setLoading] = useState(false);

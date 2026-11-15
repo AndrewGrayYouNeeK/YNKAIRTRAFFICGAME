@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { MapContainer, TileLayer, Circle, Polygon, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Circle, useMapEvents } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Plus, Trash2, Edit3, AlertTriangle, Lock } from "lucide-react";
+import { Shield, Plus, Trash2 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const CENTER = [40.7128, -74.006];

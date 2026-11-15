@@ -30,6 +30,10 @@ export function speechErrorMessage(code) {
   }
 }
 
+export function nativePermissionGranted(status) {
+  return status?.speechRecognition === "granted";
+}
+
 export function mapNativeSpeechError(code) {
   switch (code) {
     case "not-allowed":

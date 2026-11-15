@@ -2,7 +2,7 @@ import React from "react";
 import { listRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from "recharts";
 import { TrendingUp, AlertTriangle, Radio, Activity, Zap } from "lucide-react";

@@ -22,14 +22,34 @@ export function calculateScore(session) {
   return Math.max(0, score);
 }
 
-export function getLeaderboard() {
-  if (typeof localStorage === "undefined") return [];
-  const data = localStorage.getItem("atc_leaderboard");
-  return data ? JSON.parse(data) : [];
+export const LEADERBOARD_KEY = "atc_leaderboard";
+
+function boardStorage(storage) {
+  if (storage) return storage;
+  if (typeof localStorage === "undefined") return null;
+  return localStorage;
 }
 
-export function addScoreToLeaderboard(name, score, stats) {
-  const board = getLeaderboard();
+export function readLeaderboard(storage) {
+  const store = boardStorage(storage);
+  if (!store) return [];
+  try {
+    const data = store.getItem(LEADERBOARD_KEY);
+    const parsed = data ? JSON.parse(data) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getLeaderboard() {
+  return readLeaderboard();
+}
+
+export function addScoreToLeaderboard(name, score, stats, storage) {
+  const store = boardStorage(storage);
+  if (!store) return [];
+  const board = readLeaderboard(store);
   board.push({
     name,
     score,
@@ -38,6 +58,13 @@ export function addScoreToLeaderboard(name, score, stats) {
     emergencies: stats.emergencies_handled,
   });
   board.sort((a, b) => b.score - a.score);
-  localStorage.setItem("atc_leaderboard", JSON.stringify(board.slice(0, 50)));
-  return board;
+  const kept = board.slice(0, 50);
+  store.setItem(LEADERBOARD_KEY, JSON.stringify(kept));
+  return kept;
+}
+
+export function recordShiftScore(name, stats, status, storage) {
+  const score = calculateScore(stats);
+  if (status === "completed") addScoreToLeaderboard(name, score, stats, storage);
+  return score;
 }

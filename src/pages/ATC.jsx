@@ -1,5 +1,6 @@
+// @ts-nocheck
+// Superseded by pages/ATCv2.jsx, which is the routed scope.
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, LogOut } from "lucide-react";
 import { filterRecords, updateRecord } from "@/lib/localStore";

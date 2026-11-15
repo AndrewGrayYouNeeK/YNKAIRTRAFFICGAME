@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, CheckCircle2, XCircle, AlertTriangle, Radio } from "lucide-react";
+import { Fingerprint, CheckCircle2, XCircle, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

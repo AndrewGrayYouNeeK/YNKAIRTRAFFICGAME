@@ -40,7 +40,7 @@ export default function SoundControls() {
         min="0"
         max="100"
         value={muted ? 0 : volume * 100}
-        onChange={(e) => handleVolumeChange(e.target.value / 100)}
+        onChange={(e) => handleVolumeChange(Number(e.target.value) / 100)}
         className="w-24 h-2 bg-secondary rounded-full cursor-pointer accent-primary"
       />
       <span className="text-xs font-mono text-muted-foreground w-6 text-right">
