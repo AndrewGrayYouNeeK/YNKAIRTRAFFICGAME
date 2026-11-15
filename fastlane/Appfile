@@ -1,0 +1,4 @@
+# Must match Capacitor appId and Xcode PRODUCT_BUNDLE_IDENTIFIER.
+app_identifier("com.youneek.airtraffic")
+# Set via env in CI: APPLE_TEAM_ID
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]

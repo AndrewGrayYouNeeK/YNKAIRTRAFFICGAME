@@ -1,8 +1,8 @@
 # Releasing YNK Air Traffic
 
-Andrew, the repo now contains an Xcode project and an Android Studio project. The game you already play on the web is what those projects display. You still have to sign the iOS app with your Apple Developer account and upload it. Nobody else can do that part.
+Andrew, the repo now contains an Xcode project and an Android Studio project. The game you already play on the web is what those projects display. The usual upload path is the GitHub Action in `.github/workflows/ios-testflight.yml`, which signs with your App Store Connect API key and sends the build to TestFlight. You can still archive from Xcode on your Mac if you want.
 
-The web app is unchanged as a website: `npm install`, `npm run dev`, and `npm run build` still work. Base44 is not part of this project.
+The web app is unchanged as a website: `npm install`, `npm run dev`, and `npm run build` still work.
 
 ## What you are shipping
 
@@ -55,16 +55,16 @@ npm run ios:sync
 
 The phone should be in landscape. The command pad sits at the bottom, above the home indicator. The notch or Dynamic Island is inset on the side.
 
-## Archive and upload with Xcode
+## Archive and upload with Xcode (fallback)
 
-This is the path to use. The GitHub Action is optional and is off until you add secrets.
+The usual path is the GitHub Action below. Use Xcode on your Mac if you want to upload by hand.
 
 1. In Xcode, set the run destination to **Any iOS Device (arm64)**.
-2. Confirm the target version is **1.0.0** and the build is **1** (General → Identity). Bump the build number for every upload, even when the version stays 1.0.0.
+2. Confirm the target version is **1.0.0** (General → Identity). If you upload from Xcode, bump the build number for every upload, even when the version stays 1.0.0. The CI lane does this for you.
 3. Product → Archive. Wait until the Organizer opens.
 4. Distribute App → App Store Connect → Upload.
 5. Leave bitcode off (Xcode no longer offers it). Symbol upload can stay on.
-6. When the upload finishes, wait for App Store Connect to finish processing. That often takes 10–30 minutes, sometimes longer. You get an email when TestFlight is ready.
+6. When the upload finishes, wait for App Store Connect to finish processing. That often takes 2–10 minutes, sometimes longer. You get an email when TestFlight is ready.
 
 ## TestFlight
 
@@ -89,38 +89,55 @@ Apple's first review is the step that can reject the app. The usual risks for th
 - Microphone and speech strings are in `Info.plist`, and the mic uses the native speech recognizer because the iOS web view cannot hear the browser speech API.
 - The privacy policy is a real page, not a placeholder inside the binary only. The Connect form still needs your hosted URL.
 
-## GitHub Action (optional, off)
+## CI → TestFlight
 
-`.github/workflows/ios-release.yml` does not run on push. It runs only when you start it by hand, and the release job does nothing until you set a repository variable.
+GitHub Actions workflow: `.github/workflows/ios-testflight.yml`
 
-1. Repo → Settings → Secrets and variables → Actions → Variables → New repository variable.
-   - Name: `IOS_RELEASE_ENABLED`
-   - Value: `true`
-2. Add these repository secrets. Do not commit the files.
+- Runner: **`macos-26`** (Xcode 26 / iOS 26 SDK — required for new App Store uploads)
+- Bundle ID stays **`com.youneek.airtraffic`**
+- App name: **YNK Air Traffic**
+- Xcode project: `ios/App/App.xcodeproj`, scheme **App**
+- Web build + Capacitor sync: `npm run ios:sync`
+- Pull requests: unsigned Xcode compile only
+- Pushes to `main` (under the watched paths) and **Run workflow**: signed App Store IPA via fastlane, then `pilot` upload to TestFlight when the secrets below are set
+- The `beta` lane reads the latest TestFlight build number for `com.youneek.airtraffic` and increments it before archiving, so each upload gets a new `CFBundleVersion`. Leave the marketing version at 1.0.0 until you bump `MARKETING_VERSION` in Xcode.
 
-| Secret | What it is |
-| --- | --- |
-| `APPLE_TEAM_ID` | 10-character Team ID from the developer account membership page |
-| `IOS_DISTRIBUTION_CERTIFICATE_BASE64` | Base64 of the Apple Distribution `.p12` |
-| `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for that `.p12` |
-| `IOS_PROVISION_PROFILE_BASE64` | Base64 of the App Store `.mobileprovision` for `com.youneek.airtraffic` |
-| `APP_STORE_CONNECT_API_KEY_ID` | Key ID of an App Store Connect API key with Developer access or higher |
-| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID shown above the keys |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | Base64 of the downloaded `AuthKey_XXXXXXXX.p8` |
+App Store Connect must already have an iOS app whose Bundle ID is exactly `com.youneek.airtraffic`. The API cannot create that listing; create it once in the App Store Connect website (name **YNK Air Traffic**, English (U.S.), SKU `ynk-air-traffic-ios`) before the first upload.
 
-Create the API key in App Store Connect → Users and Access → Integrations → App Store Connect API. You can download the `.p8` once.
+### Required repository secrets
 
-Encode a file on your Mac:
+These are already set on this repository. Do not commit the files or paste the values into chat.
 
-```bash
-base64 -i Certificates.p12 | pbcopy
-base64 -i profile.mobileprovision | pbcopy
-base64 -i AuthKey_ABC123XYZ.p8 | pbcopy
-```
+| Secret | Purpose |
+|--------|---------|
+| `APP_STORE_CONNECT_API_KEY_ID` | ASC API Key ID |
+| `APP_STORE_CONNECT_ISSUER_ID` | ASC Issuer ID |
+| `APP_STORE_CONNECT_API_KEY_P8` | Full contents of the `.p8` private key (PEM text; `\n` escapes OK) |
+| `APPLE_TEAM_ID` | 10-character Apple Team ID |
 
-3. Actions → **iOS App Store** → Run workflow.
+Create an App Store Connect **Team** API key (Users and Access → Integrations → App Store Connect API). Use **Admin** if you want Xcode automatic signing to create or manage distribution certificates on CI; **App Manager** is enough for TestFlight upload once a certificate already exists.
 
-Until `IOS_RELEASE_ENABLED` is `true`, a manual run stops in the gate job and does not start a Mac. The workflow archives with manual signing and uploads the `.ipa` with `xcrun altool`. If a future Xcode removes `altool`, upload that same archive from Xcode Organizer. The action is a convenience, not the only way up.
+### Recommended extra secrets (GitHub-hosted runners)
+
+The ASC `.p8` authenticates App Store Connect (profiles + upload) but **does not contain** the iOS Distribution certificate private key. On ephemeral GitHub-hosted runners that key is lost when the job ends, so durable signed builds need a `.p12`:
+
+| Secret | Purpose |
+|--------|---------|
+| `IOS_DISTRIBUTION_CERTIFICATE_P12` | Base64-encoded Apple Distribution `.p12` (`base64 -i dist.p12 \| pbcopy` on macOS) |
+| `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for that `.p12` (empty string secret if the p12 has no password) |
+
+Create the Distribution certificate once in [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/certificates/list) (or via Xcode on a Mac), export the private key as `.p12`, and store it only in GitHub secrets — never commit it.
+
+Without the `.p12` secrets, the workflow falls back to Xcode automatic signing with `-allowProvisioningUpdates` and the ASC authentication key. That can work for a first upload with an **Admin** API key, but is fragile on hosted runners.
+
+The older manual-signing workflow (`.github/workflows/ios-release.yml`) and the `IOS_RELEASE_ENABLED` variable are no longer used.
+
+### Run the workflow
+
+1. Confirm the required secrets are present (and add the recommended `.p12` pair if you have it).
+2. Confirm App Store Connect has an iOS app whose Bundle ID is exactly `com.youneek.airtraffic`.
+3. Actions → **iOS build / TestFlight** → **Run workflow**, or merge to `main` under the watched paths.
+   Pull requests only run the unsigned Xcode 26 compile; signed archive + TestFlight upload run on `main` pushes and `workflow_dispatch`.
 
 ## Android (optional)
 
@@ -140,7 +157,7 @@ npm run build
 npm run ios:sync
 ```
 
-Then archive again and upload a higher build number.
+A merge to `main` that touches the game, iOS project, or the workflow will run the TestFlight job and bump the build number. If you archive from Xcode instead, upload a higher build number by hand.
 
 ## What this environment could not do
 
