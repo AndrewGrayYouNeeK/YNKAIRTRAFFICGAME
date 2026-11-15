@@ -26,6 +26,7 @@ const AIRLINES = [
 ];
 
 // Real ATC/pilot radio phrases
+/** @type {Array<(callsign: string, a?: number, b?: number, c?: number) => string>} */
 const ATC_PHRASES = [
   (cs, alt, hdg) => `${cs}, climb and maintain flight level ${Math.round(alt/100)}, heading ${hdg}.`,
   (cs, alt)      => `${cs}, descend and maintain ${alt.toLocaleString()}, expect ILS approach.`,
@@ -39,6 +40,7 @@ const ATC_PHRASES = [
   (cs)           => `${cs}, hold short of runway 28L, traffic on final.`,
 ];
 
+/** @type {Array<(callsign: string, a?: number, b?: number, c?: number) => string>} */
 const PILOT_READBACKS = [
   (cs, alt, hdg) => `Climbing flight level ${Math.round(alt/100)}, heading ${hdg}, ${cs}.`,
   (cs, alt)      => `Descending to ${alt.toLocaleString()}, ${cs}.`,

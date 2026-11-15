@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { Play, Pause, RotateCcw } from "lucide-react";
 
 export default function ScanControls({ scanning, onToggleScan, onReset }) {
   return (

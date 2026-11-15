@@ -55,7 +55,7 @@ export default function CommandPad({
             className="pad-btn"
             data-testid={turn.id}
             disabled={!armed}
-            onClick={() => send(headingCommand(selectedPlane, turn.delta))}
+            onClick={() => send((plane) => headingCommand(plane, turn.delta))}
           >
             {turn.label}
           </button>
@@ -68,7 +68,7 @@ export default function CommandPad({
           className="pad-btn"
           data-testid="descend"
           disabled={!armed}
-          onClick={() => send(altitudeCommand(selectedPlane, -1000))}
+          onClick={() => send((plane) => altitudeCommand(plane, -1000))}
         >
           DESCEND
         </button>
@@ -77,7 +77,7 @@ export default function CommandPad({
           className="pad-btn"
           data-testid="climb"
           disabled={!armed}
-          onClick={() => send(altitudeCommand(selectedPlane, 1000))}
+          onClick={() => send((plane) => altitudeCommand(plane, 1000))}
         >
           CLIMB
         </button>
@@ -89,7 +89,7 @@ export default function CommandPad({
           className="pad-btn"
           data-testid="slower"
           disabled={!armed}
-          onClick={() => send(speedCommand(selectedPlane, -20))}
+          onClick={() => send((plane) => speedCommand(plane, -20))}
         >
           SLOWER
         </button>
@@ -98,7 +98,7 @@ export default function CommandPad({
           className="pad-btn"
           data-testid="faster"
           disabled={!armed}
-          onClick={() => send(speedCommand(selectedPlane, 20))}
+          onClick={() => send((plane) => speedCommand(plane, 20))}
         >
           FASTER
         </button>
@@ -111,7 +111,7 @@ export default function CommandPad({
           data-coach="land"
           data-testid="clear-to-land"
           disabled={!armed}
-          onClick={() => send({ type: "cleared_to_land", runway })}
+          onClick={() => send((plane) => ({ type: "cleared_to_land", runway: plane.runway || activeRunway }))}
         >
           CLEARED TO LAND
         </button>

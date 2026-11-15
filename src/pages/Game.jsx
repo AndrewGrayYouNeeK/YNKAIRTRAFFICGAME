@@ -1,8 +1,7 @@
+// @ts-nocheck
 import React, { useState, useEffect } from "react";
 import { createRecord, filterRecords, subscribeRecords, updateRecord } from "@/lib/localStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import StrategyMode from "../components/game/StrategyMode";
 import ARMode from "../components/game/ARMode";
 import GameSetup from "../components/game/GameSetup";

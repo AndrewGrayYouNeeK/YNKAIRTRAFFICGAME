@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capgo/capacitor-speech-recognition";
+import { nativePermissionGranted } from "./speechInput.js";
 
 const LANGUAGE = "en-US";
 
@@ -51,12 +52,13 @@ async function onDeviceRecognitionAvailable() {
 
 export async function startNativeListening({ onPartial, onError }) {
   const permissions = await SpeechRecognition.requestPermissions();
-  if (permissions?.speechRecognition !== "granted") {
+  if (!nativePermissionGranted(permissions)) {
     onError?.("not-allowed");
     return null;
   }
 
   const onDevice = await onDeviceRecognitionAvailable();
+  await SpeechRecognition.removeAllListeners().catch(() => {});
   let latest = "";
   const partialHandle = await SpeechRecognition.addListener("partialResults", (event) => {
     const text = transcriptFromPartial(event);

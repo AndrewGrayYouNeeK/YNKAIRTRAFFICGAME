@@ -141,12 +141,14 @@ export default function AtcRadarV2({
   airport,
   activeRunway,
   touchdown,
+  liveAircraftRef = null,
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const sweepRef = useRef(0);
   const historyRef = useRef(new Map());
   const aircraftRef = useRef(aircraft);
+  const externalAircraftRef = useRef(liveAircraftRef);
   const selectedRef = useRef(selectedPlane);
   const windRef = useRef(wind);
   const airportRef = useRef(airport);
@@ -154,7 +156,8 @@ export default function AtcRadarV2({
   const touchdownRef = useRef(touchdown);
   const [size, setSize] = useState(64);
 
-  aircraftRef.current = aircraft;
+  externalAircraftRef.current = liveAircraftRef;
+  if (!liveAircraftRef) aircraftRef.current = aircraft;
   selectedRef.current = selectedPlane;
   windRef.current = wind;
   airportRef.current = airport;
@@ -186,7 +189,8 @@ export default function AtcRadarV2({
       frame += 1;
       const now = performance.now();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const targets = aircraftRef.current || [];
+      const external = externalAircraftRef.current?.current;
+      const targets = external || aircraftRef.current || [];
       const selected = selectedRef.current;
       const windNow = windRef.current;
       const field = airportRef.current;
@@ -481,9 +485,12 @@ export default function AtcRadarV2({
     const point = canvasPointFromEvent(event, canvas, size);
     const center = size / 2;
     const pxPerNm = (size / 2 - 28) / MAX_RANGE_NM;
+    /** @type {{ id: string } | null} */
     let closest = null;
     let minDist = HIT_RADIUS;
-    (aircraftRef.current || []).forEach((plane) => {
+    const external = liveAircraftRef?.current;
+    const targets = external || aircraftRef.current || [];
+    targets.forEach((plane) => {
       if (plane.status === "landed") return;
       const planeX = center + plane.x * pxPerNm;
       const planeY = center - plane.y * pxPerNm;

@@ -36,6 +36,7 @@ export function SpeechProvider({
   const nativeSessionRef = useRef(null);
   const isTransmittingRef = useRef(false);
   const startingRef = useRef(false);
+  const listenGeneration = useRef(0);
   const latestInterimRef = useRef("");
   const latestFinalRef = useRef("");
   const ignoreResultRef = useRef(false);
@@ -104,11 +105,14 @@ export function SpeechProvider({
   };
 
   const stopTransmission = () => {
-    if (!isTransmittingRef.current) return;
+    listenGeneration.current += 1;
     if (isNativeApp()) {
       void stopNativeRecognition();
+      isTransmittingRef.current = false;
+      setIsTransmitting(false);
       return;
     }
+    if (!isTransmittingRef.current) return;
     stopWebRecognition();
   };
 
@@ -163,6 +167,8 @@ export function SpeechProvider({
   };
 
   const startNativeTransmission = async () => {
+    const generation = listenGeneration.current + 1;
+    listenGeneration.current = generation;
     setNotice("");
     setLastLog(null);
     latestInterimRef.current = "";
@@ -170,15 +176,21 @@ export function SpeechProvider({
     ignoreResultRef.current = false;
     const session = await startNativeListening({
       onPartial: (text) => {
+        if (generation !== listenGeneration.current) return;
         latestInterimRef.current = text;
         setInterim(text);
       },
       onError: (code) => {
+        if (generation !== listenGeneration.current) return;
         const message = mapNativeSpeechError(code);
         if (message) setNotice(message);
         if (permissionError(code)) ignoreResultRef.current = true;
       },
     });
+    if (generation !== listenGeneration.current) {
+      await session?.stop();
+      return;
+    }
     if (!session) {
       setNotice((current) => current || mapNativeSpeechError("start-failed"));
       return;
@@ -202,7 +214,7 @@ export function SpeechProvider({
   };
 
   const toggleTransmission = () => {
-    if (isTransmittingRef.current) stopTransmission();
+    if (isTransmittingRef.current || startingRef.current) stopTransmission();
     else startTransmission();
   };
 

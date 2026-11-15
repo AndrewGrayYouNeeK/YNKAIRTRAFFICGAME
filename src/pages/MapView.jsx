@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, Circle, useMap } from "react-leaflet";
 import { filterRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import { generateDrone, updateDrone } from "../lib/droneSimulator";
-import { Badge } from "@/components/ui/badge";
-import { Navigation, ArrowUp, Gauge, Signal } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER = [40.7128, -74.006];

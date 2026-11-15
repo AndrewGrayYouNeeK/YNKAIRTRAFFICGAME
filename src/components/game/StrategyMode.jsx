@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Eye, Hammer, Lock, Zap, Users, Flame, Zap as ZapIcon } from "lucide-react";
+import { Eye, Hammer, Lock, Zap, Users, Flame, Zap as ZapIcon } from "lucide-react";
 import RadarDisplay from "../radar/RadarDisplay";
 import MapTargeting from "./MapTargeting";
 import MysteryBox from "./MysteryBox";

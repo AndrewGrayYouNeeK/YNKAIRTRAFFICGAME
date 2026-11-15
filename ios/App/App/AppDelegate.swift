@@ -10,7 +10,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.ambient, options: [.mixWithOthers])
+            // Play-and-record lets the speech recognizer start after the mic button.
+            // Ambient playback rejects the recording category change on device.
+            try session.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothHFP]
+            )
             try session.setActive(true)
         } catch {
             // Tones still go through the web audio context after the first tap.

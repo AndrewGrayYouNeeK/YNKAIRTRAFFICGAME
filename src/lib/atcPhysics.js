@@ -6,6 +6,8 @@ export const MAX_STEP_SECONDS = 0.1;
 export const TURN_RATE_DEG_PER_SEC = 3;
 export const SEPARATION_NM = 3;
 export const SEPARATION_FT = 1000;
+export const SEPARATION_EXIT_NM = SEPARATION_NM + 0.5;
+export const SEPARATION_EXIT_FT = SEPARATION_FT + 200;
 export const COLLISION_NM = 0.35;
 export const COLLISION_FT = 500;
 export const SPAWN_MIN_RANGE_NM = 20;
@@ -208,6 +210,41 @@ export function inboundSpawn(designator, distanceNm, elevation = 0) {
   };
 }
 
+export function offsetFromTrack(plane, lateralNm) {
+  const offset = Number(lateralNm) || 0;
+  if (!plane || offset === 0) return plane;
+  const heading = ((plane.heading || 0) * Math.PI) / 180;
+  return {
+    ...plane,
+    x: (plane.x || 0) + Math.cos(heading) * offset,
+    y: (plane.y || 0) - Math.sin(heading) * offset,
+  };
+}
+
+export function conflictsWithTraffic(candidate, planes, minNm = SEPARATION_NM) {
+  return (planes || []).some((plane) => {
+    if (!plane || plane.status === "landed" || plane.id === candidate?.id) return false;
+    const { horDist, altDiff } = getMinSeparation(candidate, plane);
+    return horDist < minNm && altDiff < SEPARATION_FT;
+  });
+}
+
+export function chooseInboundSpawn(existing, airport, runway, index) {
+  const distances = [26, 30, 34, 38];
+  const laterals = [0, 5, -5, 10, -10];
+  for (let attempt = 0; attempt < distances.length; attempt += 1) {
+    const distance = distances[(index + attempt) % distances.length];
+    for (let side = 0; side < laterals.length; side += 1) {
+      const candidate = offsetFromTrack(
+        createInboundAircraft(index, airport, runway, distance),
+        laterals[side],
+      );
+      if (!conflictsWithTraffic(candidate, existing)) return candidate;
+    }
+  }
+  return null;
+}
+
 export function createInboundAircraft(index, airport, runway, distanceNm = 24) {
   const elevation = airport?.elevation || 0;
   const designator = runway || airport?.runways?.[0] || "36";
@@ -310,6 +347,63 @@ export function getMinSeparation(plane1, plane2) {
 
 function isActive(plane) {
   return plane && plane.status !== "landed";
+}
+
+export function separationPairKey(a, b) {
+  return [a?.id, b?.id].sort().join("|");
+}
+
+export function mergeCommandedAircraft(simulated, live) {
+  const liveById = new Map((live || []).map((plane) => [plane.id, plane]));
+  return (simulated || []).map((plane) => {
+    const commanded = liveById.get(plane.id);
+    if (!commanded || commanded === plane) return plane;
+    const teleported = Boolean(commanded.tutorialFinal) && !plane.tutorialFinal;
+    return {
+      ...plane,
+      desiredSpeed: commanded.desiredSpeed,
+      desiredAltitude: commanded.desiredAltitude,
+      desiredHeading: commanded.desiredHeading,
+      clearedToLand: commanded.clearedToLand,
+      status: commanded.status,
+      runway: commanded.runway,
+      tutorialFinal: commanded.tutorialFinal,
+      timeScale: commanded.timeScale ?? plane.timeScale,
+      squawk: commanded.squawk,
+      assignedFrequency: commanded.assignedFrequency,
+      speedLimited: plane.speedLimited || commanded.speedLimited,
+      maxSpeed: plane.maxSpeed ?? commanded.maxSpeed,
+      turnRate: plane.turnRate ?? commanded.turnRate,
+      emergency: plane.emergency || commanded.emergency,
+      ...(teleported ? {
+        x: commanded.x,
+        y: commanded.y,
+        heading: commanded.heading,
+        actualHeading: commanded.actualHeading,
+        desiredHeading: commanded.desiredHeading,
+      } : {}),
+    };
+  });
+}
+
+export function updateSeparationWatch(previous, planes) {
+  const prev = previous instanceof Set ? previous : new Set(previous || []);
+  const { separations, collisions } = findConflicts(planes);
+  const active = new Set(separations.map((pair) => separationPairKey(pair.a, pair.b)));
+  prev.forEach((key) => {
+    if (active.has(key)) return;
+    const [idA, idB] = String(key).split("|");
+    const a = (planes || []).find((plane) => plane.id === idA);
+    const b = (planes || []).find((plane) => plane.id === idB);
+    if (!a || !b || !isActive(a) || !isActive(b)) return;
+    const { horDist, altDiff } = getMinSeparation(a, b);
+    if (horDist < SEPARATION_EXIT_NM && altDiff < SEPARATION_EXIT_FT) active.add(key);
+  });
+  const fresh = [];
+  active.forEach((key) => {
+    if (!prev.has(key)) fresh.push(key);
+  });
+  return { active, fresh, separations, collisions };
 }
 
 export function findConflicts(planes = []) {

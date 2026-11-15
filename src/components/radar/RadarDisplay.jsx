@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import { motion } from "framer-motion";
 
 const RINGS = [0.25, 0.5, 0.75, 1.0];
 const RANGE_LABELS = ["10nm", "20nm", "30nm", "40nm"];

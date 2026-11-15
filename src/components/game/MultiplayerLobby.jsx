@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { filterRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Users, MapPin, Shield, Play } from "lucide-react";
 
 export default function MultiplayerLobby({ onStartGame, onJoinGame }) {

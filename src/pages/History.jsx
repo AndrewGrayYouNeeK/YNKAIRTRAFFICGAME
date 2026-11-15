@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import { listRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, MapPin, AlertTriangle, Gauge, ArrowUp, Radio, Trash2 } from "lucide-react";
+import { Clock } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const threatBadgeStyles = {

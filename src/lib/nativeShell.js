@@ -32,6 +32,7 @@ async function configureNativeChrome() {
   await App.addListener("appStateChange", ({ isActive }) => {
     if (isActive) resumeAudio();
     else suspendAudio();
+    document.dispatchEvent(new CustomEvent("ynk-app-state", { detail: { isActive } }));
   });
 }
 

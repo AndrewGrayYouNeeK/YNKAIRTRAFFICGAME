@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap } from "lucide-react";
 
 export default function CasperBonusRound({ session, onUpdate, onComplete }) {
   const [casper, setCasper] = useState({

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Eye, ChevronLeft, Crosshair, Zap, Users, Zap as ZapIcon } from "lucide-react";
+import { ChevronLeft, Crosshair, Users } from "lucide-react";
 import { filterRecords } from "@/lib/localStore";
 import { useQuery } from "@tanstack/react-query";
 import { useGameSync } from "../../hooks/useGameSync";

@@ -25,6 +25,13 @@ export function generateEmergency(planeCount = 1) {
   };
 }
 
+export function settleEmergency(emergency, plane, landed) {
+  if (!emergency || !plane || plane.id !== emergency.planeId || !landed) {
+    return { emergency, handled: false };
+  }
+  return { emergency: null, handled: true };
+}
+
 export function applyEmergencyEffects(plane, emergency) {
   if (!plane || !emergency) return plane;
 
