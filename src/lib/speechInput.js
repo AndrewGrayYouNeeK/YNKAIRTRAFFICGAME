@@ -29,3 +29,33 @@ export function speechErrorMessage(code) {
       return "Speech recognition failed. Type the clearance, or tap TAP MIC again.";
   }
 }
+
+export function mapNativeSpeechError(code) {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+    case "MICROPHONE_PERMISSION_DENIED":
+    case "SPEECH_PERMISSION_DENIED":
+    case "permission-denied":
+      return "Microphone permission was denied. On iPhone, allow Microphone and Speech Recognition for YNK Air Traffic in Settings. You can also type the clearance.";
+    case "AUDIO_SESSION_FAILED":
+    case "AUDIO_ENGINE_START_FAILED":
+    case "audio-capture":
+      return speechErrorMessage("audio-capture");
+    case "UNSUPPORTED_LOCALE":
+    case "language-not-supported":
+      return speechErrorMessage("language-not-supported");
+    case "ON_DEVICE_RECOGNITION_UNAVAILABLE":
+      return "On-device speech recognition is unavailable. Tap TAP MIC again, or type the clearance.";
+    case "no-speech":
+      return speechErrorMessage("no-speech");
+    case "aborted":
+      return "";
+    case "RECOGNIZER_UNAVAILABLE":
+    case "start-failed":
+    case "MODERN_START_FAILED":
+      return speechErrorMessage("start-failed");
+    default:
+      return speechErrorMessage("start-failed");
+  }
+}

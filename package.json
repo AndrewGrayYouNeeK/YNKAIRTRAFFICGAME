@@ -1,7 +1,7 @@
 {
   "name": "atc-game",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,9 +10,23 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
-    "test": "node --test src/lib/*.test.js"
+    "test": "node --test src/lib/*.test.js",
+    "build:native": "vite build && cap sync",
+    "ios:sync": "vite build && cap sync ios",
+    "android:sync": "vite build && cap sync android",
+    "assets:brand": "node scripts/generate-brand-assets.mjs",
+    "screenshots": "node scripts/capture-app-store-screenshots.mjs",
+    "verify:native": "node scripts/verify-native-project.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capgo/capacitor-speech-recognition": "^8.4.6",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -78,6 +92,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.6.0",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",
@@ -91,7 +107,9 @@
     "eslint-plugin-react-refresh": "^0.4.18",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
+    "playwright": "^1.65.0",
     "postcss": "^8.5.3",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"

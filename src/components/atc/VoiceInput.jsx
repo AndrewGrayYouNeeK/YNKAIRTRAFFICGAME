@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Mic } from "lucide-react";
 import parseATCCommand from "@/lib/voiceCommandParser";
-import { getSpeechRecognition, speechErrorMessage, unsupportedSpeechMessage } from "@/lib/speechInput";
+import { getSpeechRecognition, mapNativeSpeechError, speechErrorMessage, unsupportedSpeechMessage } from "@/lib/speechInput";
+import { isNativeApp, nativeSpeechSupported, startNativeListening } from "@/lib/nativeSpeech";
+import { vibrate } from "@/lib/audioManager";
 
 const SpeechContext = createContext(null);
 
@@ -9,6 +12,16 @@ function useSpeech() {
   const speech = useContext(SpeechContext);
   if (!speech) throw new Error("Mic controls must sit inside SpeechProvider");
   return speech;
+}
+
+function permissionError(code) {
+  return code === "not-allowed"
+    || code === "service-not-allowed"
+    || code === "audio-capture"
+    || code === "MICROPHONE_PERMISSION_DENIED"
+    || code === "SPEECH_PERMISSION_DENIED"
+    || code === "AUDIO_ENGINE_START_FAILED"
+    || code === "AUDIO_SESSION_FAILED";
 }
 
 export function SpeechProvider({
@@ -20,7 +33,9 @@ export function SpeechProvider({
   example = "",
 }) {
   const recognitionRef = useRef(null);
+  const nativeSessionRef = useRef(null);
   const isTransmittingRef = useRef(false);
+  const startingRef = useRef(false);
   const latestInterimRef = useRef("");
   const latestFinalRef = useRef("");
   const ignoreResultRef = useRef(false);
@@ -39,7 +54,18 @@ export function SpeechProvider({
   const [interim, setInterim] = useState("");
   const [lastLog, setLastLog] = useState(null);
   const [notice, setNotice] = useState("");
-  const supported = Boolean(getSpeechRecognition());
+  const [supported, setSupported] = useState(() => isNativeApp() || Boolean(getSpeechRecognition()));
+
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    let cancelled = false;
+    nativeSpeechSupported().then((available) => {
+      if (!cancelled) setSupported(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const processTranscript = () => {
     const transcript = (latestFinalRef.current || latestInterimRef.current || "").trim();
@@ -61,12 +87,32 @@ export function SpeechProvider({
     onCommandRef.current?.(parsed.command, parsed);
   };
 
-  const stopTransmission = () => {
-    if (!isTransmittingRef.current) return;
+  const stopWebRecognition = () => {
     recognitionRef.current?.stop();
   };
 
-  const startTransmission = () => {
+  const stopNativeRecognition = async () => {
+    const session = nativeSessionRef.current;
+    nativeSessionRef.current = null;
+    if (!session) return;
+    const text = await session.stop();
+    if (text) latestFinalRef.current = text;
+    isTransmittingRef.current = false;
+    setIsTransmitting(false);
+    if (!ignoreResultRef.current) processTranscript();
+    ignoreResultRef.current = false;
+  };
+
+  const stopTransmission = () => {
+    if (!isTransmittingRef.current) return;
+    if (isNativeApp()) {
+      void stopNativeRecognition();
+      return;
+    }
+    stopWebRecognition();
+  };
+
+  const startWebTransmission = () => {
     const Recognition = getSpeechRecognition();
     if (!Recognition || isTransmittingRef.current) return;
     setNotice("");
@@ -93,9 +139,7 @@ export function SpeechProvider({
     recognition.onerror = (event) => {
       const message = speechErrorMessage(event.error);
       if (message) setNotice(message);
-      if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "audio-capture") {
-        ignoreResultRef.current = true;
-      }
+      if (permissionError(event.error)) ignoreResultRef.current = true;
     };
     recognition.onend = () => {
       isTransmittingRef.current = false;
@@ -109,12 +153,52 @@ export function SpeechProvider({
       recognition.start();
       isTransmittingRef.current = true;
       setIsTransmitting(true);
+      vibrate(12);
     } catch {
       isTransmittingRef.current = false;
       setIsTransmitting(false);
       recognitionRef.current = null;
       setNotice(speechErrorMessage("start-failed"));
     }
+  };
+
+  const startNativeTransmission = async () => {
+    setNotice("");
+    setLastLog(null);
+    latestInterimRef.current = "";
+    latestFinalRef.current = "";
+    ignoreResultRef.current = false;
+    const session = await startNativeListening({
+      onPartial: (text) => {
+        latestInterimRef.current = text;
+        setInterim(text);
+      },
+      onError: (code) => {
+        const message = mapNativeSpeechError(code);
+        if (message) setNotice(message);
+        if (permissionError(code)) ignoreResultRef.current = true;
+      },
+    });
+    if (!session) {
+      setNotice((current) => current || mapNativeSpeechError("start-failed"));
+      return;
+    }
+    nativeSessionRef.current = session;
+    isTransmittingRef.current = true;
+    setIsTransmitting(true);
+    vibrate(12);
+  };
+
+  const startTransmission = () => {
+    if (isTransmittingRef.current || startingRef.current) return;
+    if (isNativeApp()) {
+      startingRef.current = true;
+      startNativeTransmission().finally(() => {
+        startingRef.current = false;
+      });
+      return;
+    }
+    startWebTransmission();
   };
 
   const toggleTransmission = () => {
@@ -143,6 +227,9 @@ export function SpeechProvider({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       recognitionRef.current?.stop();
+      const session = nativeSessionRef.current;
+      nativeSessionRef.current = null;
+      session?.stop();
     };
   }, []);
 
@@ -183,9 +270,16 @@ export function MicButton() {
 
 export function SpeechStatus() {
   const { supported, isTransmitting, interim, lastLog, notice } = useSpeech();
+  const native = Capacitor.isNativePlatform();
   return (
     <div className="voice-panel" data-testid="voice-panel" data-coach="voice-status">
-      {!supported && <p className="voice-note">{unsupportedSpeechMessage()}</p>}
+      {!supported && (
+        <p className="voice-note">
+          {native
+            ? "Speech recognition is not available on this device. Type a clearance or use the command buttons."
+            : unsupportedSpeechMessage()}
+        </p>
+      )}
       {supported && isTransmitting && (
         <p className="voice-live">Listening: {interim ? `${interim}` : "speak a clearance"}</p>
       )}

@@ -1,38 +1,54 @@
-// Audio cues for game events
-const audioContext = typeof window !== "undefined" ? new (window.AudioContext || window.webkitAudioContext)() : null;
+import { Capacitor } from "@capacitor/core";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
+
+const audioContext = typeof window !== "undefined" && window.AudioContext ? new window.AudioContext() : null;
+
+function runWithAudio(play) {
+  if (!audioContext) return;
+  const start = () => {
+    try {
+      play(audioContext);
+    } catch {
+      // A tone that fails to schedule should not interrupt the sim.
+    }
+  };
+  if (audioContext.state === "suspended") {
+    audioContext.resume().then(start).catch(() => {});
+    return;
+  }
+  start();
+}
 
 function playTone(freq, duration = 200, volume = 0.12, type = "sine") {
-  if (!audioContext) return;
-  const now = audioContext.currentTime;
-  const osc = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-
-  osc.connect(gain);
-  gain.connect(audioContext.destination);
-
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(volume, now);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + duration / 1000);
-
-  osc.start(now);
-  osc.stop(now + duration / 1000);
+  runWithAudio((context) => {
+    const now = context.currentTime;
+    const osc = context.createOscillator();
+    const gain = context.createGain();
+    osc.connect(gain);
+    gain.connect(context.destination);
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + duration / 1000);
+    osc.start(now);
+    osc.stop(now + duration / 1000);
+  });
 }
 
 function playChord(frequencies, duration = 200) {
-  if (!audioContext) return;
-  const now = audioContext.currentTime;
-  const gain = audioContext.createGain();
-  gain.connect(audioContext.destination);
-  gain.gain.setValueAtTime(0.08, now);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + duration / 1000);
-
-  frequencies.forEach((freq) => {
-    const osc = audioContext.createOscillator();
-    osc.connect(gain);
-    osc.frequency.value = freq;
-    osc.start(now);
-    osc.stop(now + duration / 1000);
+  runWithAudio((context) => {
+    const now = context.currentTime;
+    const gain = context.createGain();
+    gain.connect(context.destination);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + duration / 1000);
+    frequencies.forEach((freq) => {
+      const osc = context.createOscillator();
+      osc.connect(gain);
+      osc.frequency.value = freq;
+      osc.start(now);
+      osc.stop(now + duration / 1000);
+    });
   });
 }
 
@@ -59,7 +75,39 @@ export function speakText(text, rate = 1) {
   window.speechSynthesis.speak(utterance);
 }
 
+export function suspendAudio() {
+  if (audioContext && audioContext.state === "running") {
+    audioContext.suspend().catch(() => {});
+  }
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+export function resumeAudio() {
+  if (audioContext && audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+}
+
+/**
+ * @param {number | number[]} pattern
+ */
+function patternIsStrong(pattern) {
+  const pulses = Array.isArray(pattern) ? pattern : [pattern];
+  return pulses.some((pulse) => Number(pulse) >= 150);
+}
+
+/**
+ * Light tap for a command. A long or multi-pulse pattern is a heavy alert.
+ * @param {number | number[]} [pattern]
+ */
 export function vibrate(pattern = 100) {
+  if (Capacitor.isNativePlatform()) {
+    const style = patternIsStrong(pattern) ? ImpactStyle.Heavy : ImpactStyle.Light;
+    Haptics.impact({ style }).catch(() => {});
+    return;
+  }
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     navigator.vibrate(pattern);
   }

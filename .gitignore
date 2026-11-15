@@ -29,3 +29,21 @@ dist-ssr
 
 .env
 .vite
+
+# Capacitor copies the web build here. Rebuild with npm run ios:sync.
+ios/App/App/public
+ios/App/build
+ios/DerivedData
+ios/**/xcuserdata
+android/app/src/main/assets/public
+android/app/src/main/assets/capacitor.config.json
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/.idea
+*.keystore
+*.jks
+*.mobileprovision
+*.p12
+*.p8
