@@ -47,3 +47,11 @@ android/.idea
 *.mobileprovision
 *.p12
 *.p8
+
+# Native / store artifacts from the TestFlight pipeline
+build/
+*.ipa
+*.dSYM.zip
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output

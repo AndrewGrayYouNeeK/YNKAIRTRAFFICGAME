@@ -151,12 +151,29 @@ test("native speech stays closed until both permissions are granted", () => {
   assert.equal(nativePermissionGranted(null), false);
 });
 
-test("the iOS release workflow can decode signing secrets on macOS", () => {
+test("the iOS TestFlight workflow uses API-key signing and an unsigned PR compile", () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
-  const workflow = readFileSync(join(root, ".github/workflows/ios-release.yml"), "utf8");
-  assert.equal(workflow.includes("base64 --decode"), false);
-  assert.equal(workflow.split("base64 -D").length - 1, 3);
-  assert.match(workflow, /login\.keychain-db/);
-  assert.match(workflow, /Apple Distribution/);
-  assert.match(workflow, /ITSAppUsesNonExemptEncryption|com\.youneek\.airtraffic/);
+  const workflow = readFileSync(join(root, ".github/workflows/ios-testflight.yml"), "utf8");
+  const fastfile = readFileSync(join(root, "fastlane/Fastfile"), "utf8");
+  const info = readFileSync(join(root, "ios/App/App/Info.plist"), "utf8");
+
+  assert.match(workflow, /runs-on:\s*macos-26/);
+  assert.match(workflow, /npm run ios:sync/);
+  assert.match(workflow, /ios\/App\/App\.xcodeproj/);
+  assert.match(workflow, /CODE_SIGNING_ALLOWED=NO/);
+  assert.match(workflow, /github\.event_name != 'pull_request'/);
+  assert.match(workflow, /fastlane ios beta/);
+  assert.match(workflow, /secrets\.APP_STORE_CONNECT_API_KEY_P8/);
+  assert.match(workflow, /secrets\.APPLE_TEAM_ID/);
+  assert.equal(workflow.includes("APP_STORE_CONNECT_API_KEY_BASE64"), false);
+  assert.equal(workflow.includes("IOS_PROVISION_PROFILE_BASE64"), false);
+
+  assert.match(fastfile, /BUNDLE_ID = "com\.youneek\.airtraffic"/);
+  assert.match(fastfile, /latest_testflight_build_number/);
+  assert.match(fastfile, /increment_build_number/);
+  assert.match(fastfile, /YNKAirTraffic\.ipa/);
+
+  assert.match(info, /<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
+  assert.match(info, /<key>NSMicrophoneUsageDescription<\/key>/);
+  assert.match(info, /<key>NSSpeechRecognitionUsageDescription<\/key>/);
 });
